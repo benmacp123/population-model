@@ -104,15 +104,19 @@ def population_change(
     Returns:
         Tuple[float, float]: A tuple containing the new adult and juvenile populations.
     """
-
+    # Calculate the birth and death rates based on species details
     birth_rate = 12 / species_details["gestation_period_months"]
     death_rate = 1 / species_details["life_span_years"]
 
-    sex_mat_rate_years = (species_details["sex_matur_m_years"] + species_details["sex_matur_f_years"]) * species_details["sex_ratio"]
+    # Calculate the rate the avg rate of sexual maturation for both males and females, adjusted for the sex ratio
+    sex_mat_rate_m = 1 / species_details["sex_matur_m_years"]
+    sex_mat_rate_f = 1 / species_details["sex_matur_f_years"]
+    sex_mat_rate_years = (sex_mat_rate_m + sex_mat_rate_f) * species_details["sex_ratio"]
 
     # Calculate the rate at which juveniles mature into adults, adjusted for carrying capacity
     juv_maturation_adult = sex_mat_rate_years * (1 - (species_details["adult_pop"]+species_details["juvenile_pop"]) / carrying_capacity)
 
+    # Calculate the changes in adult and juvenile populations
     adult_pop_change = adult_pop_change(juv_maturation_adult=juv_maturation_adult, adult_death_rate=death_rate)
     juv_pop_change = juv_pop_change(birth_rate=birth_rate, juv_death_rate=death_rate, juv_maturation_adult=juv_maturation_adult)
     
