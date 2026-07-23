@@ -116,6 +116,7 @@ def get_species_df() -> pd.DataFrame:
         ]
     )
 
+
 def population_change(
     species_details: Dict[str, Any], carrying_capacity: float = None
 ) -> Tuple[float, float]:
@@ -152,8 +153,7 @@ def population_change(
     if carrying_capacity and carrying_capacity > 0:
         carrying_factor = max(
             0.0,
-            1.0
-            - (adult_pop + juvenile_pop) / carrying_capacity,
+            1.0 - (adult_pop + juvenile_pop) / carrying_capacity,
         )
 
     # Calculate the number of juveniles that mature into adults

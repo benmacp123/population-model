@@ -4,7 +4,7 @@ install:
 
 
 test:
-	python -m pytest -vv --cov=myproj test_growth_model.py
+	python -m pytest -vv --cov=growth_model test_growth_model.py
 
 
 format:
@@ -15,4 +15,4 @@ lint:
 	python -m pylint --disable=R,C growth_model.py
 
 
-all: install test lint
+all: install test format lint

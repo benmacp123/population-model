@@ -11,11 +11,19 @@ from growth_model import (
 
 
 def test_adult_pop_change():
-    assert adult_pop_change(adult_pop=100, matured_juveniles=10, adult_death_rate=0.05) == 10 - 5
+    assert (
+        adult_pop_change(adult_pop=100, matured_juveniles=10, adult_death_rate=0.05)
+        == 10 - 5
+    )
 
 
 def test_juv_pop_change():
-    assert juv_pop_change(juvenile_pop=50, births=20, juv_death_rate=0.1, matured_juveniles=5) == 20 - 5 - 5
+    assert (
+        juv_pop_change(
+            juvenile_pop=50, births=20, juv_death_rate=0.1, matured_juveniles=5
+        )
+        == 20 - 5 - 5
+    )
 
 
 def test_calc_carrying_capacity_default():
@@ -35,7 +43,9 @@ def test_population_change_uses_population_scaling():
         "sex_matur_f_years": 2,
         "sex_ratio": 0.5,
     }
-    new_adult_pop, new_juvenile_pop = population_change(species_details, carrying_capacity=500.0)
+    new_adult_pop, new_juvenile_pop = population_change(
+        species_details, carrying_capacity=500.0
+    )
     assert new_adult_pop != species_details["adult_pop"]
     assert new_juvenile_pop != species_details["juvenile_pop"]
     assert new_adult_pop > 0
