@@ -4,7 +4,7 @@ install:
 
 
 test:
-	python -m pytest -vv --cov=myproj test_hello.py
+	python -m pytest -vv --cov=myproj test_growth_model.py
 
 
 format:
