@@ -1,6 +1,7 @@
 install:
-	pip install --upgrade pip &&\
-		pip install -r requirements.txt
+	python -m pip install --upgrade pip &&\
+		python -m pip install -r requirements.txt &&\
+		python -m pip install -r requirements-dev.txt
 
 
 test:
@@ -12,7 +13,7 @@ format:
 
 
 lint:
-	pylint --disable=R,C hello.py
+	python -m pylint --disable=R,C growth_model.py
 
 
 all: install test lint
