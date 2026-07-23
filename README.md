@@ -1,5 +1,5 @@
 # Population Model
-[![Python Applications test with GitHub Actions](https://github.com/benmacp123/simple-population-model/actions/workflows/main.yml/badge.svg)](https://github.com/benmacp123/simple-population-model/actions/workflows/main.yml)
+[![Python Applications test with GitHub Actions](https://github.com/benmacp123/population-model/actions/workflows/main.yml/badge.svg)](https://github.com/benmacp123/population-model/actions/workflows/main.yml)
 
 Simple population modelling based on maturation rates of individual species, sex-specific dynamics, and carrying capacity.
 
@@ -17,28 +17,38 @@ The current implementation is designed to be a prototype framework rather than a
 
 ## What it currently does
 
-The current model uses a simple demographic projection with the following core equations:
+The current model uses a simple demographic projection with the following core formulas:
 
 - Carrying capacity proxy:
-  $$K = \frac{\sum_{i} N_i \cdot w_i}{w_{\text{target}}}$$
-  where $N_i$ is population size, $w_i$ is average weight, and $w_{\text{target}}$ is the target species average weight.
+  ```text
+  K = (Σ_i N_i * w_i) / w_target
+  ```
+  where `N_i` is population size, `w_i` is average weight, and `w_target` is the target species average weight.
 
 - Births per year:
-  $$B = N_{\text{adult}} \cdot r_{\text{birth}}$$
-  with $r_{\text{birth}} = \frac{12}{\text{gestation\_period\_months}}$.
+  ```text
+  B = N_adult * r_birth
+  r_birth = 12 / gestation_period_months
+  ```
 
 - Mortality rates:
-  $$d = \frac{1}{\text{life\_span\_years}}$$
-  $$D_{\text{adult}} = N_{\text{adult}} \cdot d$$
-  $$D_{\text{juvenile}} = N_{\text{juvenile}} \cdot d$$
+  ```text
+  d = 1 / life_span_years
+  D_adult = N_adult * d
+  D_juvenile = N_juvenile * d
+  ```
 
 - Maturation from juveniles to adults:
-  $$M = N_{\text{juvenile}} \cdot r_{\text{mat}} \cdot f(K, N)$$
-  where $r_{\text{mat}}$ is the sex-weighted maturation rate and $f(K, N)$ is a carrying-capacity factor.
+  ```text
+  M = N_juvenile * r_mat * f(K, N)
+  ```
+  where `r_mat` is the sex-weighted maturation rate and `f(K, N)` is a carrying-capacity factor.
 
 - Population updates:
-  $$N'_{\text{adult}} = N_{\text{adult}} + M - D_{\text{adult}}$$
-  $$N'_{\text{juvenile}} = N_{\text{juvenile}} + B - D_{\text{juvenile}} - M$$
+  ```text
+  N_adult' = N_adult + M - D_adult
+  N_juvenile' = N_juvenile + B - D_juvenile - M
+  ```
 
 The executable model then projects these values year-by-year for the selected species and forecast horizon.
 
