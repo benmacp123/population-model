@@ -1,4 +1,5 @@
-# simple-population-model
+# Population Model
+[![Python Applications test with GitHub Actions](https://github.com/benmacp123/simple-population-model/actions/workflows/main.yml/badge.svg)](https://github.com/benmacp123/simple-population-model/actions/workflows/main.yml)
 
 Simple population modelling based on maturation rates of individual species, sex-specific dynamics, and carrying capacity.
 
