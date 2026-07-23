@@ -1,4 +1,5 @@
-click
-pylint
-pandas
 pytest
+pytest-cov
+pylint
+black
+ipython
