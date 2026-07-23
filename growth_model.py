@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-
 import click
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, Union
+
 import pandas as pd
 
 
@@ -46,27 +46,60 @@ def juv_pop_change(
     return births - juvenile_deaths - matured_juveniles
 
 
-def calc_carrying_capacity(species_name: str) -> float:
+def get_species_df() -> pd.DataFrame:
     """
-    Calculate the carrying capacity for a given species based on its average weight and the total biomass.
+    Placeholder function to retrieve a list of species records.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing species data with columns for name, population, and average weight.
+    """
+    return pd.DataFrame(
+        [
+            {
+                "name": "Zebra",
+                "year": 2024,
+                "avg_weight_kg": 10.0,
+                "adult_pop": 1000.0,
+                "juvenile_pop": 500.0,
+                "total_pop": 1500.0,
+                "gestation_period_months": 6,
+                "life_span_years": 5,
+                "sex_matur_m_years": 2,
+                "sex_matur_f_years": 2,
+                "sex_ratio": 0.5,
+            },
+            {
+                "name": "Waterbuck",
+                "year": 2024,
+                "avg_weight_kg": 20.0,
+                "adult_pop": 800.0,
+                "juvenile_pop": 400.0,
+                "total_pop": 1200.0,
+                "gestation_period_months": 8,
+                "life_span_years": 6,
+                "sex_matur_m_years": 3,
+                "sex_matur_f_years": 3,
+                "sex_ratio": 0.6,
+            },
+        ]
+    )
+
+
+def calc_carrying_capacity(species_df: pd.DataFrame, species_name: str) -> float:
+    """
+    Calculate the carrying capacity for a given species based on total biomass and average weight.
 
     Args:
+        species_df (pd.DataFrame): Species data.
         species_name (str): The name of the species for which to calculate carrying capacity.
 
     Returns:
         float: The carrying capacity for the specified species.
     """
-    # Calculate the total biomass (in kg) of all species
-    total_kg = 0.0
-    species_df = get_species_df()
     if species_df.empty:
         return 1000.0
 
-    for _, species in species_df.iterrows():
-        species_pop = species["total_pop"]
-        total_kg += species_pop * species["avg_weight_kg"]
-
-    # Calculate the carrying capacity for the specified species based on its average weight
+    total_kg = (species_df["total_pop"] * species_df["avg_weight_kg"]).sum()
     species_match = species_df[species_df["name"] == species_name]
     if species_match.empty:
         species_avg_weight_kg = 10.0
@@ -76,79 +109,49 @@ def calc_carrying_capacity(species_name: str) -> float:
     return total_kg / species_avg_weight_kg
 
 
-def get_species_df() -> pd.DataFrame:
-    """
-    Placeholder function to retrieve a list of species objects.
-    Replace this with actual implementation to fetch species data.
-
-    Returns:
-        pd.DataFrame: A DataFrame containing species data with columns for name, population, and average weight.
-    """
-    # Example implementation, replace with actual data retrieval logic
-    return pd.DataFrame(
-        [
-            {
-                "name": "Zebra",
-                "year": "2024",
-                "avg_weight_kg": 10.0,  # Example average weight
-                "adult_pop": 1000,  # Example population
-                "juvenile_pop": 500,  # Example juvenile population
-                "total_pop": 1500,  # Example total population
-                "gestation_period_months": 6,  # Example gestation period
-                "life_span_years": 5,  # Example life span
-                "sex_matur_m_years": 2,  # Example male sexual maturity age
-                "sex_matur_f_years": 2,  # Example female sexual maturity age
-                "sex_ratio": 0.5,  # Example sex ratio
-            },
-            {
-                "name": "Waterbuck",
-                "year": "2024",
-                "avg_weight_kg": 20.0,  # Example average weight
-                "adult_pop": 800,  # Example population
-                "juvenile_pop": 400,  # Example juvenile population
-                "total_pop": 1200,  # Example total population
-                "gestation_period_months": 8,  # Example gestation period
-                "life_span_years": 6,  # Example life span
-                "sex_matur_m_years": 3,  # Example male sexual maturity age
-                "sex_matur_f_years": 3,  # Example female sexual maturity age
-                "sex_ratio": 0.6,
-            },
-        ]
+def _normalize_species_details(
+    species_details: Union[pd.Series, Dict[str, Any]]
+) -> Dict[str, Any]:
+    if isinstance(species_details, pd.Series):
+        return species_details.to_dict()
+    if isinstance(species_details, dict):
+        return species_details
+    raise TypeError(
+        "species_details must be a pandas Series or a dict containing species fields"
     )
 
 
 def population_change(
-    species_details: Dict[str, Any], carrying_capacity: float = None
-) -> Tuple[float, float]:
+    species_details: Union[pd.Series, Dict[str, Any]], carrying_capacity: float = None
+) -> pd.Series:
     """
-    Calculate the change in population in a year for a given species based on its birth rate, death rate, and carrying capacity.
+    Calculate the annual population update for a species record.
 
     Args:
-        species_details (Dict[str, Any]): A dictionary containing details about the species.
-        carrying_capacity (float, optional): The carrying capacity for the species. Defaults to None.
+        species_details (Union[pd.Series, Dict[str, Any]]): Species data record.
+        carrying_capacity (float, optional): Carrying capacity for the species.
 
     Returns:
-        Tuple[float, float]: A tuple containing the new adult and juvenile populations.
+        pd.Series: Updated adult, juvenile, and total population values.
     """
-    # Extract relevant species details
-    adult_pop = float(species_details["adult_pop"])
-    juvenile_pop = float(species_details["juvenile_pop"])
+    details = _normalize_species_details(species_details)
+    adult_pop = float(details["adult_pop"])
+    juvenile_pop = float(details["juvenile_pop"])
 
-    # Calculate birth and death rates
-    birth_rate = 12 / species_details["gestation_period_months"]
-    adult_death_rate = 1 / species_details["life_span_years"]
+    birth_rate = 12.0 / float(details["gestation_period_months"])
+    adult_death_rate = 1.0 / float(details["life_span_years"])
     juv_death_rate = adult_death_rate
 
-    # Calculate population dynamics
-    female_ratio = 1.0 - species_details["sex_ratio"]
+    female_ratio = 1.0 - float(details["sex_ratio"])
     births = adult_pop * female_ratio * birth_rate
 
-    # Calculate the average sexual maturity rate for males and females
-    sex_mat_rate_m = 1 / species_details["sex_matur_m_years"]
-    sex_mat_rate_f = 1 / species_details["sex_matur_f_years"]
-    sex_mat_rate_years = (sex_mat_rate_m + sex_mat_rate_f) / 2
+    sex_mat_rate_m = 1.0 / float(details["sex_matur_m_years"])
+    sex_mat_rate_f = 1.0 / float(details["sex_matur_f_years"])
+    sex_mat_rate_years = (
+        sex_mat_rate_m * float(details["sex_ratio"])
+        + sex_mat_rate_f * female_ratio
+    )
 
-    # Calculate carrying factor based on carrying capacity
     carrying_factor = 1.0
     if carrying_capacity and carrying_capacity > 0:
         carrying_factor = max(
@@ -156,10 +159,7 @@ def population_change(
             1.0 - (adult_pop + juvenile_pop) / carrying_capacity,
         )
 
-    # Calculate the number of juveniles that mature into adults
     matured_juveniles = juvenile_pop * sex_mat_rate_years * carrying_factor
-
-    # Calculate the changes in adult and juvenile populations
     adult_change = adult_pop_change(
         adult_pop=adult_pop,
         matured_juveniles=matured_juveniles,
@@ -172,11 +172,61 @@ def population_change(
         matured_juveniles=matured_juveniles,
     )
 
-    # Update the populations
-    new_juvenile_pop = juvenile_pop + juv_change
     new_adult_pop = adult_pop + adult_change
+    new_juvenile_pop = juvenile_pop + juv_change
+    new_total_pop = new_adult_pop + new_juvenile_pop
 
-    return new_adult_pop, new_juvenile_pop
+    return pd.Series(
+        {
+            "adult_pop": new_adult_pop,
+            "juvenile_pop": new_juvenile_pop,
+            "total_pop": new_total_pop,
+        }
+    )
+
+
+def forecast_population(
+    species_df: pd.DataFrame,
+    species_name: str,
+    start_year: int = 2024,
+    forecast_horizon: int = 10,
+) -> pd.DataFrame:
+    """
+    Forecast population counts for a species as a DataFrame.
+
+    Args:
+        species_df (pd.DataFrame): Species data.
+        species_name (str): Name of the species to forecast.
+        start_year (int): Forecast start year.
+        forecast_horizon (int): Number of years to forecast.
+
+    Returns:
+        pd.DataFrame: Year-by-year forecast of adult, juvenile, and total population.
+    """
+    species_match = species_df[species_df["name"] == species_name]
+    if species_match.empty:
+        raise ValueError(f"Species '{species_name}' not found in the data.")
+
+    species_details = species_match.iloc[0].copy()
+    carrying_capacity = calc_carrying_capacity(species_df, species_name)
+
+    rows = []
+    for year in range(start_year, start_year + forecast_horizon + 1):
+        rows.append(
+            {
+                "year": year,
+                "name": species_name,
+                "adult_pop": float(species_details["adult_pop"]),
+                "juvenile_pop": float(species_details["juvenile_pop"]),
+                "total_pop": float(species_details["total_pop"]),
+            }
+        )
+        updated = population_change(species_details, carrying_capacity)
+        species_details["adult_pop"] = updated["adult_pop"]
+        species_details["juvenile_pop"] = updated["juvenile_pop"]
+        species_details["total_pop"] = updated["total_pop"]
+
+    return pd.DataFrame(rows)
 
 
 def run_growth_model(species_name: str, start_year: int, forecast_horizon: int) -> None:
@@ -188,54 +238,38 @@ def run_growth_model(species_name: str, start_year: int, forecast_horizon: int) 
         start_year (int): The starting year for the forecast.
         forecast_horizon (int): The number of years to forecast.
     """
-    # Retrieve species data
     species_df = get_species_df()
     if species_df.empty:
         print("No species data available.")
         return
 
-    # Find the species details for the specified species name
-    species_match = species_df[species_df["name"] == species_name]
-    if species_match.empty:
-        print(f"Species '{species_name}' not found in the data.")
-        return
-
-    # Extract the species details as a dictionary
-    species_details = species_match.iloc[0].to_dict()
-    carrying_capacity = calc_carrying_capacity(species_name=species_name)
+    forecast_df = forecast_population(species_df, species_name, start_year, forecast_horizon)
+    carrying_capacity = calc_carrying_capacity(species_df, species_name)
     print(f"Carrying capacity for {species_name}: {carrying_capacity}")
-
-    # Initialize a dictionary to store the population for each year
-    species_population_per_year = {
-        start_year: (species_details["adult_pop"], species_details["juvenile_pop"])
-    }
-
-    # Forecast the population for each year in the forecast horizon
-    for year in range(start_year, start_year + forecast_horizon):
-        new_adult_pop, new_juvenile_pop = population_change(
-            species_details, carrying_capacity
-        )
-        species_population_per_year[year + 1] = (new_adult_pop, new_juvenile_pop)
-        species_details["adult_pop"] = new_adult_pop
-        species_details["juvenile_pop"] = new_juvenile_pop
-        species_details["total_pop"] = new_adult_pop + new_juvenile_pop
-
     print(f"Population forecast for {species_name}:")
-    for year, (adult_pop, juv_pop) in species_population_per_year.items():
+    for _, row in forecast_df.iterrows():
         print(
-            f"  {year}: Adults = {adult_pop}, Juveniles = {juv_pop}, Total = {adult_pop + juv_pop}"
+            f"  {int(row['year'])}: Adults = {row['adult_pop']}, Juveniles = {row['juvenile_pop']}, Total = {row['total_pop']}"
         )
 
 
 @click.command()
 @click.option(
-    "--species_name", default="Zebra", help="Name of the species to forecast."
+    "--species_name",
+    default="Zebra",
+    help="Name of the species to forecast.",
 )
 @click.option(
-    "--start_year", default=2024, type=int, help="The starting year for the forecast."
+    "--start_year",
+    default=2024,
+    type=int,
+    help="The starting year for the forecast.",
 )
 @click.option(
-    "--forecast_horizon", default=10, type=int, help="Number of years to forecast."
+    "--forecast_horizon",
+    default=10,
+    type=int,
+    help="Number of years to forecast.",
 )
 def growth_model(
     species_name: str, start_year: int, forecast_horizon: int
