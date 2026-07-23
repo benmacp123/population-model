@@ -5,13 +5,13 @@ A simple two-stage (juvenile/adult) population model with a backtest step: proje
 
 ## Approach
 
-The model is initialised from one year of observed counts, projected forward year-by-year, and then validated against any later observed counts in the dataset. The gap between projected and observed is the point — a forecast on its own can't be checked, a backtest can.
+The model is initialised from one year of observed counts, projected forward year-by-year, and then validated against any later observed counts in the dataset. The gap between projected and observed is the point -a forecast on its own can't be checked, a backtest can.
 
 ## Current work
 
 `growth_model.py` is a small executable model that:
 
-- loads two separate placeholder datasets — species traits and year-by-year counts
+- loads two separate placeholder datasets -species traits and year-by-year counts
 - computes carrying capacity, either from an explicit per-species value or from a total-biomass proxy
 - projects adult and juvenile populations forward from a chosen start year
 - applies birth, mortality and maturation dynamics with density dependence
@@ -26,21 +26,21 @@ Two inputs are held separately, matching how the data actually gets sourced:
 
 | Dataset | Grain | Source in practice |
 |---|---|---|
-| Species traits | one row per species | published literature — gestation, lifespan, maturation age, sex ratio, average weight |
+| Species traits | one row per species | published literature -gestation, lifespan, maturation age, sex ratio, average weight |
 | Species counts | one row per species per year | aerial census / survey / monitoring data |
 
 Traits are stable constants; counts vary year to year. Keeping them apart means each carries its own provenance, and it avoids duplicating the biology across every count row.
 
 Two trait fields are optional overrides, left as `None` by default:
 
-- `juv_death_rate` — falls back to the adult mortality rate
-- `carrying_capacity` — falls back to the biomass proxy below
+- `juv_death_rate` -falls back to the adult mortality rate
+- `carrying_capacity` -falls back to the biomass proxy below
 
 Where a real value is available from literature, set it in the traits table; no code change needed.
 
 ## Model formulation
 
-- **Carrying capacity** — explicit value where supplied, otherwise a biomass proxy from the start year:
+- **Carrying capacity** -explicit value where supplied, otherwise a biomass proxy from the start year:
   ```text
   K = (Σ_i N_i * w_i) / w_target
   ```
@@ -81,7 +81,7 @@ Where a real value is available from literature, set it in the traits table; no 
 
 ## Known simplifications
 
-Recorded openly rather than buried — these are the model's honest limits and the first targets for improvement.
+Recorded openly rather than buried -these are the model's honest limits and the first targets for improvement.
 
 1. **Juvenile mortality defaults to the adult rate.** In reality juvenile mortality is usually much higher and often drives the dynamics. With the fallback in place the model tends to overshoot.
 2. **Carrying capacity is partly circular.** The biomass proxy infers capacity from the population already present rather than from habitat or resource limits, and it shifts depending on which species are included in the dataset.
