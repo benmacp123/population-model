@@ -1,78 +1,119 @@
 # Population Model
 [![Python Applications test with GitHub Actions](https://github.com/benmacp123/population-model/actions/workflows/main.yml/badge.svg)](https://github.com/benmacp123/population-model/actions/workflows/main.yml)
 
-Simple population modelling based on maturation rates of individual species, sex-specific dynamics, and carrying capacity.
+A simple two-stage (juvenile/adult) population model with a backtest step: project a species forward from a historical starting year, then compare the projection against the observed counts that followed.
+
+## Approach
+
+The model is initialised from one year of observed counts, projected forward year-by-year, and then validated against any later observed counts in the dataset. The gap between projected and observed is the point — a forecast on its own can't be checked, a backtest can.
 
 ## Current work
 
-This project currently includes a small executable model in `growth_model.py` that:
+`growth_model.py` is a small executable model that:
 
-- loads placeholder species data via `pandas`
-- computes carrying capacity from total biomass and average weight
-- projects adult and juvenile populations year-by-year
-- applies birth, death, and maturation dynamics at the population level
-- supports a CLI interface using `click`
+- loads two separate placeholder datasets — species traits and year-by-year counts
+- computes carrying capacity, either from an explicit per-species value or from a total-biomass proxy
+- projects adult and juvenile populations forward from a chosen start year
+- applies birth, mortality and maturation dynamics with density dependence
+- compares the projection against observed counts and reports absolute and percentage error
+- exposes all of this through a `click` CLI
 
-The current implementation is designed to be a prototype framework rather than a final ecological model.
+This is a prototype framework rather than a finished ecological model. The simplifications below are deliberate and documented.
 
-## What it currently does
+## Data structure
 
-The current model uses a simple demographic projection with the following core formulas:
+Two inputs are held separately, matching how the data actually gets sourced:
 
-- Carrying capacity proxy:
+| Dataset | Grain | Source in practice |
+|---|---|---|
+| Species traits | one row per species | published literature — gestation, lifespan, maturation age, sex ratio, average weight |
+| Species counts | one row per species per year | aerial census / survey / monitoring data |
+
+Traits are stable constants; counts vary year to year. Keeping them apart means each carries its own provenance, and it avoids duplicating the biology across every count row.
+
+Two trait fields are optional overrides, left as `None` by default:
+
+- `juv_death_rate` — falls back to the adult mortality rate
+- `carrying_capacity` — falls back to the biomass proxy below
+
+Where a real value is available from literature, set it in the traits table; no code change needed.
+
+## Model formulation
+
+- **Carrying capacity** — explicit value where supplied, otherwise a biomass proxy from the start year:
   ```text
   K = (Σ_i N_i * w_i) / w_target
   ```
-  where `N_i` is population size, `w_i` is average weight, and `w_target` is the target species average weight.
+  where `N_i` is total population of species `i`, `w_i` its average weight, and `w_target` the target species' average weight.
 
-- Births per year:
+- **Births per year** (females only):
   ```text
-  B = N_adult * r_birth
+  B = N_adult * (1 - male_ratio) * r_birth
   r_birth = 12 / gestation_period_months
   ```
 
-- Mortality rates:
+- **Mortality**:
   ```text
-  d = 1 / life_span_years
-  D_adult = N_adult * d
-  D_juvenile = N_juvenile * d
+  d_adult = 1 / life_span_years
+  d_juvenile = juv_death_rate  (falls back to d_adult)
+  D_adult = N_adult * d_adult
+  D_juvenile = N_juvenile * d_juvenile
   ```
 
-- Maturation from juveniles to adults:
+- **Maturation from juveniles to adults**, sex-weighted and density-limited:
   ```text
   M = N_juvenile * r_mat * f(K, N)
+  r_mat = (1 / m_male) * male_ratio + (1 / m_female) * (1 - male_ratio)
+  f(K, N) = max(0, 1 - (N_adult + N_juvenile) / K)
   ```
-  where `r_mat` is the sex-weighted maturation rate and `f(K, N)` is a carrying-capacity factor.
 
-- Population updates:
+- **Population update**, floored at zero:
   ```text
-  N_adult' = N_adult + M - D_adult
-  N_juvenile' = N_juvenile + B - D_juvenile - M
+  N_adult'    = max(0, N_adult + M - D_adult)
+  N_juvenile' = max(0, N_juvenile + B - D_juvenile - M)
   ```
 
-The executable model then projects these values year-by-year for the selected species and forecast horizon.
+- **Validation**, for years present in both projection and observations:
+  ```text
+  error     = N_projected - N_observed
+  pct_error = 100 * error / N_observed
+  ```
+
+## Known simplifications
+
+Recorded openly rather than buried — these are the model's honest limits and the first targets for improvement.
+
+1. **Juvenile mortality defaults to the adult rate.** In reality juvenile mortality is usually much higher and often drives the dynamics. With the fallback in place the model tends to overshoot.
+2. **Carrying capacity is partly circular.** The biomass proxy infers capacity from the population already present rather than from habitat or resource limits, and it shifts depending on which species are included in the dataset.
+3. **Birth rate assumes continuous breeding.** `12 / gestation_months` implies back-to-back reproduction with no inter-birth interval and no seasonality.
+4. **Mortality is a flat annual hazard.** `1 / life_span_years` is not an age-structured survival curve.
+5. **Density dependence applies only to maturation**, not to births or mortality.
 
 ## Planned next steps
 
 1. **Connect to real datasets**
-   - replace placeholder data with real species survey or monitoring data
-   - normalize incoming data to a common schema
-   - support alternate input structures for age, sex, and population counts
+   - replace placeholder traits and counts with real survey and literature values, each with a source citation
+   - load from versioned CSVs rather than in-code definitions
+   - normalise incoming data to the common schema
 
-2. **Add richer demographic structure**
-   - separate age classes beyond adult/juvenile
-   - track sex-specific populations and fertility
-   - model stage transitions explicitly rather than a single maturation term
+2. **Calibrate against observed counts**
+   - use the validation output to fit juvenile mortality and carrying capacity rather than assuming them
+   - report fit quality across species
 
-3. **Incorporate predation and density dependence**
-   - add predator-driven mortality or harvest pressure
-   - allow resource limits to affect birth and survival rates
-   - support Allee effects or density-dependent reproduction
+3. **Add richer demographic structure**
+   - age classes beyond adult/juvenile
+   - sex-specific populations and fertility
+   - explicit stage transitions rather than a single maturation term
 
-4. **Move toward spatial / GIS-aware modelling**
-   - integrate spatial data for habitat quality and resource availability
-   - map carrying capacity across cells or landscape units
-   - support movement, dispersal, and local density dynamics
+4. **Incorporate predation and density dependence**
+   - predator-driven mortality or harvest pressure
+   - resource limits affecting birth and survival rates
+   - Allee effects or density-dependent reproduction
+
+5. **Move toward spatial / GIS-aware modelling**
+   - habitat quality and resource availability as spatial layers
+   - carrying capacity mapped across cells or landscape units
+   - movement, dispersal and local density dynamics
 
 ## Getting started
 
@@ -83,10 +124,24 @@ The executable model then projects these values year-by-year for the selected sp
    ```
 3. Run the model:
    ```bash
-   ./growth_model.py --species_name Zebra --start_year 2024 --forecast_horizon 10
+   ./growth_model.py --species_name Zebra --start_year 2018 --forecast_horizon 6
    ```
+
+`--start_year` must exist in the counts dataset for the chosen species, since the projection is initialised from observed values.
+
+Example output:
+
+```text
+Projection for Zebra from 2018:
+  2018: adults=700 juveniles=300 total=1000
+  ...
+
+Validation against observed counts:
+  2020: projected=1586 observed=1180 error=+406 (+34.4%)
+  2022: projected=2112 observed=1330 error=+782 (+58.8%)
+```
 
 ## Notes
 
 - This repository is a lightweight prototype and should be extended before use in production analysis.
-- The current model is intentionally simple to allow future enhancement toward real datasets, age structure, sex-specific dynamics, predation, and spatial modelling.
+- Placeholder figures are illustrative only and are not sourced from real survey data.
