@@ -6,38 +6,44 @@ from typing import Any, Dict, Tuple
 import pandas as pd
 
 
-def adult_pop_change(juv_maturation_adult: float, adult_death_rate: float) -> float:
+def adult_pop_change(
+    adult_pop: float, matured_juveniles: float, adult_death_rate: float
+) -> float:
     """
-    Calculate the change in adult population based on the current adult and juvenile populations,
-    carrying capacity, and adult death rate.
+    Calculate net adult population change from maturation and adult mortality.
 
     Args:
-        juv_maturation_adult (float): The rate at which juveniles mature into adults.
-        adult_death_rate (float): The rate at which adults die.
+        adult_pop (float): Current adult population.
+        matured_juveniles (float): Number of juveniles maturing into adults.
+        adult_death_rate (float): Annual adult mortality rate.
 
     Returns:
-        float: The change in adult population.
+        float: The net adult population change.
     """
-    return juv_maturation_adult - adult_death_rate
+    adult_deaths = adult_pop * adult_death_rate
+    return matured_juveniles - adult_deaths
 
 
 def juv_pop_change(
-    birth_rate: float, juv_death_rate: float, juv_maturation_adult: float
+    juvenile_pop: float,
+    births: float,
+    juv_death_rate: float,
+    matured_juveniles: float,
 ) -> float:
     """
-    Calculate the change in juvenile population based on the birth rate, juvenile death rate,
-    and the rate at which juveniles mature into adults.
+    Calculate net juvenile population change from births, juvenile mortality, and maturation.
 
     Args:
-        birth_rate (float): The rate at which new juveniles are born.
-        juv_death_rate (float): The rate at which juveniles die.
-        juv_maturation_adult (float): The rate at which juveniles mature into adults.
+        juvenile_pop (float): Current juvenile population.
+        births (float): Number of newly born juveniles.
+        juv_death_rate (float): Annual juvenile mortality rate.
+        matured_juveniles (float): Number of juveniles maturing into adults.
 
     Returns:
-        float: The change in juvenile population.
+        float: The net juvenile population change.
     """
-
-    return birth_rate - juv_death_rate - juv_maturation_adult
+    juvenile_deaths = juvenile_pop * juv_death_rate
+    return births - juvenile_deaths - matured_juveniles
 
 
 def calc_carrying_capacity(species_name: str) -> float:
@@ -50,6 +56,7 @@ def calc_carrying_capacity(species_name: str) -> float:
     Returns:
         float: The carrying capacity for the specified species.
     """
+    # Calculate the total biomass (in kg) of all species
     total_kg = 0.0
     species_df = get_species_df()
     if species_df.empty:
@@ -59,14 +66,13 @@ def calc_carrying_capacity(species_name: str) -> float:
         species_pop = species["total_pop"]
         total_kg += species_pop * species["avg_weight_kg"]
 
-    species_avg_weight_kg = next(
-        (
-            s["avg_weight_kg"]
-            for _, s in species_df.iterrows()
-            if s["name"] == species_name
-        ),
-        10.0,
-    )
+    # Calculate the carrying capacity for the specified species based on its average weight
+    species_match = species_df[species_df["name"] == species_name]
+    if species_match.empty:
+        species_avg_weight_kg = 10.0
+    else:
+        species_avg_weight_kg = float(species_match.iloc[0]["avg_weight_kg"])
+
     return total_kg / species_avg_weight_kg
 
 
@@ -123,36 +129,52 @@ def population_change(
     Returns:
         Tuple[float, float]: A tuple containing the new adult and juvenile populations.
     """
-    # Calculate the birth and death rates based on species details
-    birth_rate = 12 / species_details["gestation_period_months"]
-    death_rate = 1 / species_details["life_span_years"]
+    # Extract relevant species details
+    adult_pop = float(species_details["adult_pop"])
+    juvenile_pop = float(species_details["juvenile_pop"])
 
-    # Calculate the rate the avg rate of sexual maturation for both males and females, adjusted for the sex ratio
+    # Calculate birth and death rates
+    birth_rate = 12 / species_details["gestation_period_months"]
+    adult_death_rate = 1 / species_details["life_span_years"]
+    juv_death_rate = adult_death_rate
+
+    # Calculate population dynamics
+    female_ratio = 1.0 - species_details["sex_ratio"]
+    births = adult_pop * female_ratio * birth_rate
+
+    # Calculate the average sexual maturity rate for males and females
     sex_mat_rate_m = 1 / species_details["sex_matur_m_years"]
     sex_mat_rate_f = 1 / species_details["sex_matur_f_years"]
-    sex_mat_rate_years = (sex_mat_rate_m + sex_mat_rate_f) * species_details[
-        "sex_ratio"
-    ]
+    sex_mat_rate_years = (sex_mat_rate_m + sex_mat_rate_f) / 2
 
-    # Calculate the rate at which juveniles mature into adults, adjusted for carrying capacity
-    juv_maturation_adult = sex_mat_rate_years * (
-        1
-        - (species_details["adult_pop"] + species_details["juvenile_pop"])
-        / carrying_capacity
-    )
+    # Calculate carrying factor based on carrying capacity
+    carrying_factor = 1.0
+    if carrying_capacity and carrying_capacity > 0:
+        carrying_factor = max(
+            0.0,
+            1.0
+            - (adult_pop + juvenile_pop) / carrying_capacity,
+        )
+
+    # Calculate the number of juveniles that mature into adults
+    matured_juveniles = juvenile_pop * sex_mat_rate_years * carrying_factor
 
     # Calculate the changes in adult and juvenile populations
     adult_change = adult_pop_change(
-        juv_maturation_adult=juv_maturation_adult, adult_death_rate=death_rate
+        adult_pop=adult_pop,
+        matured_juveniles=matured_juveniles,
+        adult_death_rate=adult_death_rate,
     )
     juv_change = juv_pop_change(
-        birth_rate=birth_rate,
-        juv_death_rate=death_rate,
-        juv_maturation_adult=juv_maturation_adult,
+        juvenile_pop=juvenile_pop,
+        births=births,
+        juv_death_rate=juv_death_rate,
+        matured_juveniles=matured_juveniles,
     )
 
-    new_juvenile_pop = int(species_details["juvenile_pop"] + juv_change)
-    new_adult_pop = int(species_details["adult_pop"] + adult_change)
+    # Update the populations
+    new_juvenile_pop = juvenile_pop + juv_change
+    new_adult_pop = adult_pop + adult_change
 
     return new_adult_pop, new_juvenile_pop
 
@@ -166,23 +188,29 @@ def run_growth_model(species_name: str, start_year: int, forecast_horizon: int) 
         start_year (int): The starting year for the forecast.
         forecast_horizon (int): The number of years to forecast.
     """
+    # Retrieve species data
     species_df = get_species_df()
     if species_df.empty:
         print("No species data available.")
         return
 
-    species_details = species_df[species_df["name"] == species_name].iloc[0].to_dict()
-    if not species_details:
+    # Find the species details for the specified species name
+    species_match = species_df[species_df["name"] == species_name]
+    if species_match.empty:
         print(f"Species '{species_name}' not found in the data.")
         return
 
+    # Extract the species details as a dictionary
+    species_details = species_match.iloc[0].to_dict()
     carrying_capacity = calc_carrying_capacity(species_name=species_name)
     print(f"Carrying capacity for {species_name}: {carrying_capacity}")
 
+    # Initialize a dictionary to store the population for each year
     species_population_per_year = {
         start_year: (species_details["adult_pop"], species_details["juvenile_pop"])
     }
 
+    # Forecast the population for each year in the forecast horizon
     for year in range(start_year, start_year + forecast_horizon):
         new_adult_pop, new_juvenile_pop = population_change(
             species_details, carrying_capacity
