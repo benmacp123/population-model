@@ -101,7 +101,7 @@ def get_species_df() -> pd.DataFrame:
                 "sex_ratio": 0.5,  # Example sex ratio
             },
             {
-                "name": "Wild Buck",
+                "name": "Waterbuck",
                 "year": "2024",
                 "avg_weight_kg": 20.0,  # Example average weight
                 "adult_pop": 800,  # Example population
