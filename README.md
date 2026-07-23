@@ -2,6 +2,7 @@
 
 Simple population modelling based on maturation rates of individual species, sex-specific dynamics, and carrying capacity.
 
+[![Python Applications test with GitHub Actions](https://github.com/benmacp123/simple-population-model/actions/workflows/main.yml/badge.svg)](https://github.com/benmacp123/simple-population-model/actions/workflows/main.yml)
 ## Current work
 
 This project currently includes a small executable model in `growth_model.py` that:
@@ -60,5 +61,3 @@ The current implementation is designed to be a prototype framework rather than a
 
 - This repository is a lightweight prototype and should be extended before use in production analysis.
 - The current model is intentionally simple to allow future enhancement toward real datasets, age structure, sex-specific dynamics, predation, and spatial modelling.
-
-[![Python Applications test with GitHub Actions](https://github.com/benmacp123/simple-population-model/actions/workflows/main.yml/badge.svg)](https://github.com/benmacp123/simple-population-model/actions/workflows/main.yml)
