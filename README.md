@@ -16,11 +16,30 @@ The current implementation is designed to be a prototype framework rather than a
 
 ## What it currently does
 
-- `get_species_df()` returns example species records for testing
-- `calc_carrying_capacity()` computes a simple carrying-capacity proxy
-- `population_change()` applies scaled birth, death, and maturation changes
-- `run_growth_model()` performs the yearly forecast and prints results
-- CLI options include `species_name`, `start_year`, and `forecast_horizon`
+The current model uses a simple demographic projection with the following core equations:
+
+- Carrying capacity proxy:
+  $$K = \frac{\sum_{i} N_i \cdot w_i}{w_{\text{target}}}$$
+  where $N_i$ is population size, $w_i$ is average weight, and $w_{\text{target}}$ is the target species average weight.
+
+- Births per year:
+  $$B = N_{\text{adult}} \cdot r_{\text{birth}}$$
+  with $r_{\text{birth}} = \frac{12}{\text{gestation\_period\_months}}$.
+
+- Mortality rates:
+  $$d = \frac{1}{\text{life\_span\_years}}$$
+  $$D_{\text{adult}} = N_{\text{adult}} \cdot d$$
+  $$D_{\text{juvenile}} = N_{\text{juvenile}} \cdot d$$
+
+- Maturation from juveniles to adults:
+  $$M = N_{\text{juvenile}} \cdot r_{\text{mat}} \cdot f(K, N)$$
+  where $r_{\text{mat}}$ is the sex-weighted maturation rate and $f(K, N)$ is a carrying-capacity factor.
+
+- Population updates:
+  $$N'_{\text{adult}} = N_{\text{adult}} + M - D_{\text{adult}}$$
+  $$N'_{\text{juvenile}} = N_{\text{juvenile}} + B - D_{\text{juvenile}} - M$$
+
+The executable model then projects these values year-by-year for the selected species and forecast horizon.
 
 ## Planned next steps
 
