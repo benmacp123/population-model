@@ -106,14 +106,15 @@ def population_change(
     """
 
     birth_rate = 12 / species_details["gestation_period_months"]
-    adult_death_rate = 1 / species_details["life_span_years"]
+    death_rate = 1 / species_details["life_span_years"]
 
     sex_mat_rate_years = (species_details["sex_matur_m_years"] + species_details["sex_matur_f_years"]) * species_details["sex_ratio"]
 
+    # Calculate the rate at which juveniles mature into adults, adjusted for carrying capacity
     juv_maturation_adult = sex_mat_rate_years * (1 - (species_details["adult_pop"]+species_details["juvenile_pop"]) / carrying_capacity)
 
-    adult_pop_change = adult_pop_change(juv_maturation_adult=juv_maturation_adult, adult_death_rate=adult_death_rate)
-    juv_pop_change = juv_pop_change(birth_rate=birth_rate, juv_death_rate=adult_death_rate, juv_maturation_adult=juv_maturation_adult)
+    adult_pop_change = adult_pop_change(juv_maturation_adult=juv_maturation_adult, adult_death_rate=death_rate)
+    juv_pop_change = juv_pop_change(birth_rate=birth_rate, juv_death_rate=death_rate, juv_maturation_adult=juv_maturation_adult)
     
     new_juvenile_pop = species_details["juvenile_pop"] + juv_pop_change
     new_adult_pop = species_details["adult_pop"] + adult_pop_change
