@@ -4,7 +4,7 @@ install:
 
 
 test:
-	python -m pytest -vv --cov=growth_model test_growth_model.py
+	python -m pytest -vv --cov=growth_model tests/*
 
 
 format:
