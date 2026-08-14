@@ -4,15 +4,15 @@ install:
 
 
 test:
-	python -m pytest -vv --cov=growth_model tests/*
+	PYTHONPATH=src python -m pytest -vv --cov=growth_model tests/*
 
 
 format:
-	black *.py
+	black src/*.py tests/*.py
 
 
 lint:
-	python -m pylint --disable=R,C growth_model.py
+	python -m pylint --disable=R,C src/growth_model.py
 
 
 all: install test format lint

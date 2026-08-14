@@ -120,11 +120,11 @@ Recorded openly rather than buried - these are the model's honest limits and the
 1. Create and activate a Python virtual environment.
 2. Install requirements:
    ```bash
-   pip install - r requirements.txt
+   pip install -r requirements.txt
    ```
 3. Run the model:
    ```bash
-   ./growth_model.py - -species_name Zebra - -start_year 2018 - -forecast_horizon 6
+   ./src/growth_model.py --species_name Zebra --start_year 2018 --forecast_horizon 6
    ```
 
 `--start_year` must exist in the counts dataset for the chosen species, since the projection is initialised from observed values.
