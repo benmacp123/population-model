@@ -8,9 +8,18 @@ import pandas as pd
 
 SOURCE_URL = "https://esapubs.org/archive/ecol/E090/184/"
 TARGETS = {
+    "Zebra": "Equus quagga",
     "Wildebeest": "Connochaetes taurinus",
     "Waterbuck": "Kobus ellipsiprymnus",
     "Kudu": "Tragelaphus strepsiceros",
+    "Buffalo": "Syncerus caffer",
+    "Eland": "Taurotragus oryx",
+    "Giraffe": "Giraffa camelopardalis",
+    "Impala": "Aepyceros melampus",
+    "Roan": "Hippotragus equinus",
+    "Sable": "Hippotragus niger",
+    "Tsessebe": "Damaliscus lunatus",
+    "Warthog": "Phacochoerus africanus",
 }
 
 
@@ -22,7 +31,7 @@ def build_traits(input_path: Path, output_path: Path) -> pd.DataFrame:
         output_path: Destination path for the normalized traits CSV extract.
 
     Returns:
-        The normalized traits for the three active candidate species.
+        The normalized traits for all census species.
     """
     source = pd.read_table(input_path).replace(-999, pd.NA)
     selected = source[source["MSW05_Binomial"].isin(TARGETS.values())].copy()

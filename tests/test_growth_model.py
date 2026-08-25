@@ -273,7 +273,20 @@ def test_placeholder_species_appear_in_both_tables():
     trait_names = set(get_species_traits()["name"])
     count_names = set(get_species_counts()["name"])
     assert count_names.issubset(trait_names)
-    assert count_names == {"Kudu", "Waterbuck", "Wildebeest"}
+    assert count_names == {
+        "Buffalo",
+        "Eland",
+        "Giraffe",
+        "Impala",
+        "Kudu",
+        "Roan",
+        "Sable",
+        "Tsessebe",
+        "Warthog",
+        "Waterbuck",
+        "Wildebeest",
+        "Zebra",
+    }
 
 
 def test_placeholder_counts_total_is_consistent():

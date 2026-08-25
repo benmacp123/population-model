@@ -135,6 +135,11 @@ Recorded openly rather than buried - these are the model's honest limits and the
   ./src/growth_model.py --species_name Wildebeest --start_year 1965 --forecast_horizon 6
    ```
 
+  Evaluate the full 1965-1997 backtest:
+  ```bash
+  make evaluate-model
+  ```
+
 `--start_year` must exist in the counts dataset for the chosen species, since the projection is initialised from observed values.
 
 Example output:

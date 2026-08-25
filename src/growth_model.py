@@ -32,6 +32,8 @@ from typing import Any, Dict, Optional, Union
 import click
 import pandas as pd
 
+ACTIVE_SPECIES = ("Wildebeest", "Waterbuck", "Kudu")
+
 
 # ---------------------------------------------------------------------------
 # Data
@@ -380,7 +382,13 @@ def compare_to_counts(
 # ---------------------------------------------------------------------------
 
 
-def run_growth_model(species_name: str, start_year: int, forecast_horizon: int) -> None:
+def run_growth_model(
+    species_name: str,
+    start_year: int,
+    forecast_horizon: int,
+    juvenile_fraction: float = 0.5,
+    male_ratio: float = 0.5,
+) -> None:
     """
     Run the forecast and validation for one species and print the results.
 
@@ -388,9 +396,14 @@ def run_growth_model(species_name: str, start_year: int, forecast_horizon: int) 
         species_name (str): Species to forecast.
         start_year (int): Year to initialise from.
         forecast_horizon (int): Number of years to project.
+        juvenile_fraction: Assumed juvenile share of observed totals.
+        male_ratio: Assumed male share of the population.
     """
     traits_df = load_species_traits("data/raw/species_traits.csv")
-    counts_df = load_species_counts("data/raw/species_counts.csv")
+    traits_df["male_ratio"] = male_ratio
+    counts_df = load_species_counts(
+        "data/raw/species_counts.csv", juvenile_fraction
+    )
 
     forecast_df = forecast_population(
         traits_df, counts_df, species_name, start_year, forecast_horizon
@@ -425,15 +438,43 @@ def run_growth_model(species_name: str, start_year: int, forecast_horizon: int) 
 @click.option(
     "--forecast_horizon", default=6, type=int, help="Number of years to project."
 )
-def growth_model(species_name: str, start_year: int, forecast_horizon: int) -> None:
+@click.option(
+    "--juvenile_fraction",
+    default=0.5,
+    type=click.FloatRange(0.0, 1.0),
+    show_default=True,
+    help="Assumed juvenile share of each observed total.",
+)
+@click.option(
+    "--male_ratio",
+    default=0.5,
+    type=click.FloatRange(0.0, 1.0),
+    show_default=True,
+    help="Assumed male share of the population.",
+)
+def growth_model(
+    species_name: str,
+    start_year: int,
+    forecast_horizon: int,
+    juvenile_fraction: float,
+    male_ratio: float,
+) -> None:
     """Run the population forecast CLI command.
 
     Args:
         species_name: Species to forecast.
         start_year: Observed year from which to initialize the forecast.
         forecast_horizon: Number of annual steps to project.
+        juvenile_fraction: Assumed juvenile share of observed totals.
+        male_ratio: Assumed male share of the population.
     """
-    run_growth_model(species_name, start_year, forecast_horizon)
+    run_growth_model(
+        species_name,
+        start_year,
+        forecast_horizon,
+        juvenile_fraction,
+        male_ratio,
+    )
 
 
 if __name__ == "__main__":

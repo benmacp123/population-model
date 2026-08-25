@@ -1,4 +1,13 @@
 name,scientific_name,avg_weight_kg,gestation_period_months,interbirth_interval_days,life_span_years,sex_matur_m_years,sex_matur_f_years,male_ratio,juv_death_rate,carrying_capacity,source
+Buffalo,Syncerus caffer,592.66598,11.08705650459921,638.75,29.5,4.609582477754962,4.609582477754962,0.5,,,https://esapubs.org/archive/ecol/E090/184/
+Eland,Taurotragus oryx,562.59269,8.902759526938238,337.0,25.0,1.8411772758384668,1.8411772758384668,0.5,,,https://esapubs.org/archive/ecol/E090/184/
+Giraffe,Giraffa camelopardalis,964.65473,14.955650459921156,608.33,36.300000000000004,4.472525667351129,4.472525667351129,0.5,,,https://esapubs.org/archive/ecol/E090/184/
+Impala,Aepyceros melampus,52.59169,6.463206307490145,365.0,17.75,1.3661054072553047,1.3661054072553047,0.5,,,https://esapubs.org/archive/ecol/E090/184/
 Kudu,Tragelaphus strepsiceros,206.05641,7.258212877792378,365.0,23.0,1.8217111567419575,1.8217111567419575,0.5,,,https://esapubs.org/archive/ecol/E090/184/
+Roan,Hippotragus equinus,264.17396,9.140275952693823,317.0,20.0,2.304777549623546,2.304777549623546,0.5,,,https://esapubs.org/archive/ecol/E090/184/
+Sable,Hippotragus niger,236.4059,8.96419185282523,365.0,22.25,2.6616563997262146,2.6616563997262146,0.5,,,https://esapubs.org/archive/ecol/E090/184/
+Tsessebe,Damaliscus lunatus,136.00033,7.818659658344283,,18.0,1.821492128678987,1.821492128678987,0.5,,,https://esapubs.org/archive/ecol/E090/184/
+Warthog,Phacochoerus africanus,82.49999000000001,5.666557161629435,,15.0,,,0.5,,,https://esapubs.org/archive/ecol/E090/184/
 Waterbuck,Kobus ellipsiprymnus,204.39348,8.869908015768726,365.0,19.919999999999998,3.9053798767967147,3.9053798767967147,0.5,,,https://esapubs.org/archive/ecol/E090/184/
 Wildebeest,Connochaetes taurinus,198.61968,8.261826544021025,365.0,21.5,2.304777549623546,2.304777549623546,0.5,,,https://esapubs.org/archive/ecol/E090/184/
+Zebra,Equus quagga,400.0,,,20.0,,,0.5,,,https://esapubs.org/archive/ecol/E090/184/
