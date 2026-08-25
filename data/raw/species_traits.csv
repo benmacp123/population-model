@@ -1,0 +1,5 @@
+name,scientific_name,avg_weight_kg,gestation_period_months,interbirth_interval_days,life_span_years,sex_matur_m_years,sex_matur_f_years,male_ratio,juv_death_rate,carrying_capacity,source
+Kudu,Tragelaphus strepsiceros,206.05641,7.258212877792378,365.0,23.0,1.8217111567419575,1.8217111567419575,,,,https://esapubs.org/archive/ecol/E090/184/
+Waterbuck,Kobus ellipsiprymnus,204.39348,8.869908015768726,365.0,19.919999999999998,3.9053798767967147,3.9053798767967147,,,,https://esapubs.org/archive/ecol/E090/184/
+Wildebeest,Connochaetes taurinus,198.61968,8.261826544021025,365.0,21.5,2.304777549623546,2.304777549623546,,,,https://esapubs.org/archive/ecol/E090/184/
+Zebra,Equus quagga,400.0,,,20.0,,,,,,https://esapubs.org/archive/ecol/E090/184/

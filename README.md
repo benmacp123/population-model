@@ -9,16 +9,21 @@ The model is initialised from one year of observed counts, projected forward yea
 
 ## Current work
 
-`growth_model.py` is a small executable model that:
+The current prototype includes a small executable model and a normalized
+PanTHERIA traits extract. It:
 
-- loads two separate placeholder datasets - species traits and year-by-year counts
+- keeps species traits and year-by-year counts as separate datasets
+- derives `data/raw/species_traits.csv` from the committed PanTHERIA WR05 file
 - computes carrying capacity, either from an explicit per-species value or from a total-biomass proxy
 - projects adult and juvenile populations forward from a chosen start year
 - applies birth, mortality and maturation dynamics with density dependence
 - compares the projection against observed counts and reports absolute and percentage error
 - exposes all of this through a `click` CLI
 
-This is a prototype framework rather than a finished ecological model. The simplifications below are deliberate and documented.
+The Kruger census counts are not included yet. They will be transcribed from
+an authoritative SANParks or published source and must remain within the
+1965-1997 total-count period. The simplifications below are deliberate and
+documented.
 
 ## Data structure
 
@@ -26,8 +31,8 @@ Two inputs are held separately, matching how the data actually gets sourced:
 
 | Dataset | Grain | Source in practice |
 |---|---|---|
-| Species traits | one row per species | published literature - gestation, lifespan, maturation age, sex ratio, average weight |
-| Species counts | one row per species per year | aerial census / survey / monitoring data |
+| Species traits | one row per species | PanTHERIA and other published literature |
+| Species counts | one row per species per year | Kruger aerial census / survey data |
 
 Traits are stable constants; counts vary year to year. Keeping them apart means each carries its own provenance, and it avoids duplicating the biology across every count row.
 
@@ -37,6 +42,9 @@ Two trait fields are optional overrides, left as `None` by default:
 - `carrying_capacity` - falls back to the biomass proxy below
 
 Where a real value is available from literature, set it in the traits table; no code change needed.
+
+The traits table can be regenerated with `make build-traits`. Its provenance
+and missing-value conventions are recorded in `data/README.md`.
 
 ## Model formulation
 
@@ -91,10 +99,10 @@ Recorded openly rather than buried - these are the model's honest limits and the
 
 ## Planned next steps
 
-1. **Connect to real datasets**
-   -  replace placeholder traits and counts with real survey and literature values, each with a source citation
-   -  load from versioned CSVs rather than in-code definitions
-   -  normalise incoming data to the common schema
+1. **Connect the real datasets**
+  -  transcribe Kruger counts from 1965-1997 census reports, with a source citation per row
+  -  complete missing zebra demographic parameters from a suitable literature source
+  -  load the committed CSVs in the model rather than using placeholder in-code definitions
 
 2. **Calibrate against observed counts**
    -  use the validation output to fit juvenile mortality and carrying capacity rather than assuming them

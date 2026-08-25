@@ -3,6 +3,13 @@ install:
 		python -m pip install -r requirements.txt
 
 
+setup: install
+
+
+build-traits:
+	python scripts/build_traits.py
+
+
 test:
 	PYTHONPATH=src python -m pytest -vv --cov=growth_model tests/*
 
