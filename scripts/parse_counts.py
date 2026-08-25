@@ -11,7 +11,6 @@ SOURCE_OBJECT = "judithk.815.1"
 SOURCE_URL = "https://cn.dataone.org/cn/v2/resolve/judithk.815.1"
 SURVEY_METHOD = "fixed-wing aerial total count"
 SPECIES_NAMES = {
-    "Zebra": "Zebra",
     "Kudu": "Kudu",
     "Waterbuck": "Waterbuck",
     "Blue Wildebeest": "Wildebeest",

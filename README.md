@@ -132,7 +132,7 @@ Recorded openly rather than buried - these are the model's honest limits and the
    ```
 3. Run the model:
    ```bash
-   ./src/growth_model.py --species_name Zebra --start_year 2018 --forecast_horizon 6
+  ./src/growth_model.py --species_name Wildebeest --start_year 1965 --forecast_horizon 6
    ```
 
 `--start_year` must exist in the counts dataset for the chosen species, since the projection is initialised from observed values.
@@ -140,8 +140,8 @@ Recorded openly rather than buried - these are the model's honest limits and the
 Example output:
 
 ```text
-Projection for Zebra from 2018:
-  2018: adults=700 juveniles=300 total=1000
+Projection for Wildebeest from 1965:
+  1965: adults=6518 juveniles=6518 total=13035
   ...
 
 Validation against observed counts:

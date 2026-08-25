@@ -11,6 +11,8 @@ from growth_model import (
     get_species_counts,
     get_species_traits,
     juv_pop_change,
+    load_species_counts,
+    load_species_traits,
     population_change,
     run_growth_model,
 )
@@ -153,6 +155,46 @@ def test_populations_are_floored_at_zero(traits):
     assert result["juvenile_pop"] >= 0.0
 
 
+def test_load_species_traits_reads_normalized_csv(tmp_path):
+    path = tmp_path / "traits.csv"
+    pd.DataFrame([{"name": "TestBuck", "avg_weight_kg": 100.0}]).to_csv(
+        path, index=False
+    )
+
+    loaded = load_species_traits(path)
+
+    assert loaded.iloc[0]["name"] == "TestBuck"
+
+
+def test_load_species_counts_seeds_stages_from_total(tmp_path):
+    path = tmp_path / "counts.csv"
+    pd.DataFrame([{"name": "TestBuck", "year": 1965, "total_pop": 100.0}]).to_csv(
+        path, index=False
+    )
+
+    loaded = load_species_counts(path, juvenile_fraction=0.2)
+
+    assert loaded.iloc[0]["adult_pop"] == pytest.approx(80.0)
+    assert loaded.iloc[0]["juvenile_pop"] == pytest.approx(20.0)
+
+
+def test_load_species_counts_rejects_invalid_juvenile_fraction(tmp_path):
+    path = tmp_path / "counts.csv"
+    pd.DataFrame([{"name": "TestBuck", "year": 1965, "total_pop": 100.0}]).to_csv(
+        path, index=False
+    )
+
+    with pytest.raises(ValueError, match="juvenile_fraction"):
+        load_species_counts(path, juvenile_fraction=1.1)
+
+
+def test_population_change_rejects_missing_required_traits(traits):
+    incomplete = dict(traits, male_ratio=None)
+
+    with pytest.raises(ValueError, match="male_ratio"):
+        population_change(incomplete, adult_pop=100.0, juvenile_pop=50.0)
+
+
 # ---------------------------------------------------------------------------
 # Forecasting
 # ---------------------------------------------------------------------------
@@ -231,18 +273,21 @@ def test_placeholder_species_appear_in_both_tables():
     trait_names = set(get_species_traits()["name"])
     count_names = set(get_species_counts()["name"])
     assert count_names.issubset(trait_names)
+    assert count_names == {"Kudu", "Waterbuck", "Wildebeest"}
 
 
 def test_placeholder_counts_total_is_consistent():
     counts = get_species_counts()
+    complete = counts.dropna(subset=["total_pop"])
     assert (
-        counts["total_pop"] == counts["adult_pop"] + counts["juvenile_pop"]
+        complete["total_pop"]
+        == complete["adult_pop"] + complete["juvenile_pop"]
     ).all()
 
 
 def test_run_growth_model_prints_projection_and_validation(capfd):
-    run_growth_model("Zebra", start_year=2018, forecast_horizon=6)
+    run_growth_model("Wildebeest", start_year=1965, forecast_horizon=6)
     out = capfd.readouterr().out
-    assert "Projection for Zebra from 2018:" in out
+    assert "Projection for Wildebeest from 1965:" in out
     assert "Validation against observed counts:" in out
-    assert "2024:" in out
+    assert "1965:" in out

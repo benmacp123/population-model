@@ -26,6 +26,7 @@ KNOWN SIMPLIFICATIONS (documented, to be improved later)
    or mortality.
 """
 
+from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 import click
@@ -40,7 +41,7 @@ import pandas as pd
 #   - counts = census observations (one row per species per year)
 # Keeping them apart means each has its own provenance/source citation, and it
 # stops a constant being accidentally treated as if it varied year to year.
-# Both are placeholders; replace with CSV loads plus a source column.
+# The committed CSVs are the reproducible default inputs for the CLI.
 # ---------------------------------------------------------------------------
 
 
@@ -51,32 +52,7 @@ def get_species_traits() -> pd.DataFrame:
     Returns:
         pd.DataFrame: One row per species.
     """
-    return pd.DataFrame(
-        [
-            {
-                "name": "Zebra",
-                "avg_weight_kg": 250.0,
-                "gestation_period_months": 12,
-                "life_span_years": 20,
-                "sex_matur_m_years": 4,
-                "sex_matur_f_years": 3,
-                "male_ratio": 0.5,
-                "juv_death_rate": None,      # None -> falls back to adult rate
-                "carrying_capacity": None,   # None -> falls back to biomass estimate
-            },
-            {
-                "name": "Waterbuck",
-                "avg_weight_kg": 200.0,
-                "gestation_period_months": 9,
-                "life_span_years": 18,
-                "sex_matur_m_years": 3,
-                "sex_matur_f_years": 3,
-                "male_ratio": 0.5,
-                "juv_death_rate": None,
-                "carrying_capacity": None,
-            },
-        ]
-    )
+    return load_species_traits("data/raw/species_traits.csv")
 
 
 def get_species_counts() -> pd.DataFrame:
@@ -86,23 +62,56 @@ def get_species_counts() -> pd.DataFrame:
     Returns:
         pd.DataFrame: One row per species per year, with total_pop derived.
     """
-    return pd.DataFrame(
-        [
-            {"name": "Zebra", "year": 2018, "adult_pop": 700.0, "juvenile_pop": 300.0},
-            {"name": "Zebra", "year": 2020, "adult_pop": 820.0, "juvenile_pop": 360.0},
-            {"name": "Zebra", "year": 2022, "adult_pop": 910.0, "juvenile_pop": 420.0},
-            {"name": "Zebra", "year": 2024, "adult_pop": 1000.0, "juvenile_pop": 500.0},
-            {"name": "Waterbuck", "year": 2018, "adult_pop": 600.0, "juvenile_pop": 280.0},
-            {"name": "Waterbuck", "year": 2020, "adult_pop": 680.0, "juvenile_pop": 320.0},
-            {"name": "Waterbuck", "year": 2022, "adult_pop": 740.0, "juvenile_pop": 360.0},
-            {"name": "Waterbuck", "year": 2024, "adult_pop": 800.0, "juvenile_pop": 400.0},
-        ]
-    ).assign(total_pop=lambda df: df["adult_pop"] + df["juvenile_pop"])
+    return load_species_counts("data/raw/species_counts.csv")
 
 
 # ---------------------------------------------------------------------------
 # Model components
 # ---------------------------------------------------------------------------
+
+
+def load_species_traits(path: Union[str, Path]) -> pd.DataFrame:
+    """Load normalized species traits from a committed CSV file.
+
+    Args:
+        path: Path to the normalized traits CSV.
+
+    Returns:
+        A dataframe containing one row per species.
+    """
+    return pd.read_csv(path)
+
+
+def load_species_counts(
+    path: Union[str, Path], juvenile_fraction: float = 0.5
+) -> pd.DataFrame:
+    """Load total counts and seed the model's two population stages.
+
+    Census data provides total populations only. This function applies the
+    supplied juvenile fraction to each reported total; it does not fill
+    missing census totals.
+
+    Args:
+        path: Path to the normalized counts CSV.
+        juvenile_fraction: Assumed juvenile share of each total, between zero
+            and one. Defaults to 0.5 as a provisional 50/50 adult/juvenile
+            split. This is a modelling assumption, not an observation.
+
+    Returns:
+        A dataframe with ``adult_pop``, ``juvenile_pop``, and ``total_pop``.
+
+    Raises:
+        ValueError: If the juvenile fraction is outside the inclusive range
+            from zero to one.
+    """
+    if not 0.0 <= juvenile_fraction <= 1.0:
+        raise ValueError("juvenile_fraction must be between 0 and 1.")
+
+    counts = pd.read_csv(path)
+    counts["total_pop"] = pd.to_numeric(counts["total_pop"], errors="coerce")
+    counts["juvenile_pop"] = counts["total_pop"] * juvenile_fraction
+    counts["adult_pop"] = counts["total_pop"] * (1.0 - juvenile_fraction)
+    return counts
 
 
 def adult_pop_change(
@@ -220,6 +229,22 @@ def population_change(
     """
     t = _normalize_record(traits)
 
+    required_traits = [
+        "gestation_period_months",
+        "life_span_years",
+        "male_ratio",
+        "sex_matur_m_years",
+        "sex_matur_f_years",
+    ]
+    missing_traits = [
+        field for field in required_traits
+        if t.get(field) is None or pd.isna(t.get(field))
+    ]
+    if missing_traits:
+        raise ValueError(
+            f"Missing required traits for population change: {missing_traits}"
+        )
+
     birth_rate = 12.0 / float(t["gestation_period_months"])
     adult_death_rate = 1.0 / float(t["life_span_years"])
 
@@ -334,6 +359,7 @@ def compare_to_counts(
     observed = counts_df[counts_df["name"] == species_name][
         ["year", "total_pop"]
     ].rename(columns={"total_pop": "observed_total"})
+    observed = observed.dropna(subset=["observed_total"])
 
     merged = (
         forecast_df[["year", "total_pop"]]
@@ -363,8 +389,8 @@ def run_growth_model(species_name: str, start_year: int, forecast_horizon: int) 
         start_year (int): Year to initialise from.
         forecast_horizon (int): Number of years to project.
     """
-    traits_df = get_species_traits()
-    counts_df = get_species_counts()
+    traits_df = load_species_traits("data/raw/species_traits.csv")
+    counts_df = load_species_counts("data/raw/species_counts.csv")
 
     forecast_df = forecast_population(
         traits_df, counts_df, species_name, start_year, forecast_horizon
@@ -392,8 +418,10 @@ def run_growth_model(species_name: str, start_year: int, forecast_horizon: int) 
 
 
 @click.command()
-@click.option("--species_name", default="Zebra", help="Species to forecast.")
-@click.option("--start_year", default=2018, type=int, help="Year to initialise from.")
+@click.option(
+    "--species_name", default="Wildebeest", help="Species to forecast."
+)
+@click.option("--start_year", default=1965, type=int, help="Year to initialise from.")
 @click.option(
     "--forecast_horizon", default=6, type=int, help="Number of years to project."
 )

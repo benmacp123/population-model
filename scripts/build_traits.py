@@ -8,7 +8,6 @@ import pandas as pd
 
 SOURCE_URL = "https://esapubs.org/archive/ecol/E090/184/"
 TARGETS = {
-    "Zebra": "Equus quagga",
     "Wildebeest": "Connochaetes taurinus",
     "Waterbuck": "Kobus ellipsiprymnus",
     "Kudu": "Tragelaphus strepsiceros",
@@ -23,7 +22,7 @@ def build_traits(input_path: Path, output_path: Path) -> pd.DataFrame:
         output_path: Destination path for the normalized traits CSV extract.
 
     Returns:
-        The normalized traits for the four candidate species.
+        The normalized traits for the three active candidate species.
     """
     source = pd.read_table(input_path).replace(-999, pd.NA)
     selected = source[source["MSW05_Binomial"].isin(TARGETS.values())].copy()
@@ -43,7 +42,7 @@ def build_traits(input_path: Path, output_path: Path) -> pd.DataFrame:
             # until a sex-specific source is added.
             "sex_matur_m_years": selected["23-1_SexualMaturityAge_d"] / 365.25,
             "sex_matur_f_years": selected["23-1_SexualMaturityAge_d"] / 365.25,
-            "male_ratio": pd.NA,
+            "male_ratio": 0.5,
             "juv_death_rate": pd.NA,
             "carrying_capacity": pd.NA,
             "source": SOURCE_URL,
