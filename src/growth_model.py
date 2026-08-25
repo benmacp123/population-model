@@ -182,6 +182,17 @@ def calc_carrying_capacity(
 
 
 def _normalize_record(record: Union[pd.Series, Dict[str, Any]]) -> Dict[str, Any]:
+    """Convert a pandas or dictionary trait record to a dictionary.
+
+    Args:
+        record: Trait record supplied as a pandas Series or dictionary.
+
+    Returns:
+        The trait values as a dictionary.
+
+    Raises:
+        TypeError: If ``record`` is neither a pandas Series nor a dictionary.
+    """
     if isinstance(record, pd.Series):
         return record.to_dict()
     if isinstance(record, dict):
@@ -387,6 +398,13 @@ def run_growth_model(species_name: str, start_year: int, forecast_horizon: int) 
     "--forecast_horizon", default=6, type=int, help="Number of years to project."
 )
 def growth_model(species_name: str, start_year: int, forecast_horizon: int) -> None:
+    """Run the population forecast CLI command.
+
+    Args:
+        species_name: Species to forecast.
+        start_year: Observed year from which to initialize the forecast.
+        forecast_horizon: Number of annual steps to project.
+    """
     run_growth_model(species_name, start_year, forecast_horizon)
 
 

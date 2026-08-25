@@ -16,7 +16,15 @@ TARGETS = {
 
 
 def build_traits(input_path: Path, output_path: Path) -> pd.DataFrame:
-    """Read PanTHERIA and write the model-facing candidate trait table."""
+    """Read PanTHERIA and write the model-facing candidate trait table.
+
+    Args:
+        input_path: Path to the PanTHERIA WR05 tab-separated source file.
+        output_path: Destination path for the normalized traits CSV extract.
+
+    Returns:
+        The normalized traits for the four candidate species.
+    """
     source = pd.read_table(input_path).replace(-999, pd.NA)
     selected = source[source["MSW05_Binomial"].isin(TARGETS.values())].copy()
     selected["name"] = selected["MSW05_Binomial"].map(
@@ -61,9 +69,15 @@ def build_traits(input_path: Path, output_path: Path) -> pd.DataFrame:
     show_default=True,
 )
 def main(input_path: Path, output_path: Path) -> None:
+    """Build the normalized traits CSV from the command line.
+
+    Args:
+        input_path: Path to the PanTHERIA source file.
+        output_path: Destination path for the normalized traits CSV.
+    """
     traits = build_traits(input_path, output_path)
     click.echo(f"Wrote {len(traits)} species to {output_path}")
 
 
 if __name__ == "__main__":
-    main()
+    main()  # pylint: disable=no-value-for-parameter

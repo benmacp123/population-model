@@ -34,7 +34,32 @@ parameters are sourced elsewhere.
 
 ## Population counts
 
-There is intentionally no automated counts builder. Kruger aerial census
-counts will be hand-transcribed from the selected SANParks or published
-census source, with a citation recorded for every row. Counts must remain
-limited to 1965-1997 because the survey methodology changed in 1998.
+The first source file is `raw/KNPCountsSummary.txt`, downloaded from the
+public DataONE REST object endpoint:
+
+`https://cn.dataone.org/cn/v2/resolve/judithk.815.1`
+
+It is the data object attached to the SANParks record
+`judithk.814.4`, *Census totals for large herbivores in the Kruger National
+Park summarized by year and region 1965-1997* (SANParks, 2007). The raw
+object has MD5 checksum `48938704ad3613b903e6093b9c69a6fa`.
+
+The file is tabular text with year, species, regional counts, and a `TOTAL`
+column. It includes zebra, kudu, waterbuck, and blue wildebeest. The
+downloaded file is retained unchanged as provenance evidence; it still needs
+to be normalized into the model's counts schema. Missing regional cells and
+years with incomplete coverage must not automatically be interpreted as
+zero. The total-count series must remain limited to 1965-1997 because the
+survey methodology changed in 1998.
+
+There is intentionally no automated counts builder. Once the raw data has
+been reviewed and normalized, each model count row should retain a source
+citation and survey-method field. Census totals do not contain an
+adult/juvenile split, so that split must be seeded separately from a
+documented stable-stage assumption.
+
+`raw/species_counts.csv` is the normalized candidate-species extract produced
+by `scripts/parse_counts.py`. It keeps rows whose reported total is missing
+so those gaps remain visible for review; blank totals are not treated as
+zero. The parser adds the DataONE record, object identifier, source URL, and
+survey method to every row. It does not create adult or juvenile counts.

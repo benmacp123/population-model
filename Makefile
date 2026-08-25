@@ -9,6 +9,9 @@ setup: install
 build-traits:
 	python scripts/build_traits.py
 
+parse-counts:
+	python scripts/parse_counts.py
+
 
 test:
 	PYTHONPATH=src python -m pytest -vv --cov=growth_model tests/*
