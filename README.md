@@ -1,40 +1,82 @@
 # Population Model
 [![Python Applications test with GitHub Actions](https://github.com/benmacp123/population-model/actions/workflows/main.yml/badge.svg)](https://github.com/benmacp123/population-model/actions/workflows/main.yml)
 
-A simple two-stage (juvenile/adult) population model with a backtest step: project a species forward from a historical starting year, then compare the projection against the observed counts that followed.
+A simple two-stage (juvenile/adult) population model for Kruger National Park herbivores, calibrated on 1965-1979 census totals and tested against the 1980-1997 counts it never saw.
 
 ## Approach
 
-The model is initialised from one year of observed counts, projected forward year-by-year, and then validated against any later observed counts in the dataset. The gap between projected and observed is the point - a forecast on its own can't be checked, a backtest can.
+The model is fitted on an early period of observed counts, restarted from the last calibration observation, projected forward year-by-year, and scored against the later observed counts. The gap between projected and observed is the point - a forecast on its own can't be checked, a backtest can. Every score is compared with a naive baseline that simply carries the last known count forward, so "better than doing nothing" is measured rather than assumed.
 
 ## Current work
 
-The prototype runs end to end from committed data. It:
+The model runs end to end from committed data. It:
 
 - keeps species traits and year-by-year counts as separate datasets
 - derives `data/raw/species_traits.csv` from the committed PanTHERIA WR05 file
 - normalizes the SANParks 1965-1997 fixed-wing total-count series into
   `data/raw/species_counts.csv`, with a source citation on every row and
   missing totals left missing rather than zero
-- computes carrying capacity, either from an explicit per-species value or from a total-biomass proxy
-- projects adult and juvenile populations forward from a chosen start year
 - applies birth, mortality and maturation dynamics with density dependence
-- compares the projection against observed counts and reports absolute and percentage error
-- reports backtest accuracy (`make evaluate-model`) and a diagnostic
-  assumption grid (`make tune-assumptions`)
-- exposes all of this through a `click` CLI
+- calibrates three bounded parameters per species on 1965-1979 and reports
+  low/central/high scenarios from the near-best parameter sets
+- scores the 1980-1997 holdout on level and trend against a persistence
+  baseline, and writes a results table and figure to `results/`
+- exposes a single-species projection through a `click` CLI
 
 The active species are wildebeest, waterbuck and kudu. Zebra is excluded
 until its missing reproductive traits are sourced. The census series stops at
 1997 because Kruger moved from total counts to distance sampling in 1998.
 
-**Status: exploratory.** With interbirth-interval births, juvenile-mortality
-scenarios and a calibration-period capacity, the 1980-1997 holdout error is
-about 16-38% of observed totals, roughly the same as assuming the population
-never changed. The model does not reproduce the observed 1980s-1990s
-declines (see [Known issues](#known-issues)). Forecasts should not be read as
-ecological predictions. Progress against [`PLAN.md`](PLAN.md) is recorded
-there.
+**Status: phase complete, result negative.** The model reproduces the
+calibration period to within 11-13% but has no forecasting skill on the
+holdout: it is slightly worse than carrying the 1979 count forward for all
+three species, and misses the 1980s rise and 1990s collapse. See
+[Results](#results). This is the model's honest finding, not a bug; the most
+likely missing ingredient is rainfall.
+
+## Results
+
+`make results` reproduces the table and figure below
+(`results/backtest_summary.csv`, `results/backtest.png`).
+
+![Observed census totals against calibrated and holdout projections](results/backtest.png)
+
+| Species | Calibration error | Holdout error | Persistence baseline | Skill | Step direction agreement | Observed inside scenario range |
+|---|---|---|---|---|---|---|
+| Wildebeest | 11.0% | 41.1% | 39.5% | -0.04 | 27% | 0% |
+| Waterbuck | 10.6% | 38.8% | 33.5% | -0.16 | 27% | 6% |
+| Kudu | 12.8% | 43.0% | 36.4% | -0.18 | 33% | 0% |
+
+Errors are mean absolute error as a percentage of the observed mean.
+Skill is `1 - model error / baseline error`; above zero beats persistence.
+Step direction agreement is the share of consecutive reported years where
+the projection moves the same way as the census. The persistence baseline
+never moves, so the model trivially beats it on direction; level skill is
+the meaningful test.
+
+Fitted parameters (central scenario):
+
+| Species | Juvenile mortality | Birth multiplier | Capacity (x calibration peak) | On search bound |
+|---|---|---|---|---|
+| Wildebeest | 0.40 | 0.9 | 0.5 | capacity |
+| Waterbuck | 0.40 | 0.6 | 0.9 | none |
+| Kudu | 0.55 | 0.5 | 1.5 | birth, capacity |
+
+What the results show:
+
+1. **The model fits the past but cannot forecast it.** A single-equilibrium
+   model settles towards capacity. The census instead rose sharply in the
+   early 1980s and then fell 38-81% from peak by 1995. Published Kruger work
+   links these declines to rainfall and the 1991-92 drought (for example
+   Ogutu & Owen-Smith 2003, *Ecology Letters* 6: 412-419).
+2. **The scenario range is too narrow.** Near-best parameter sets agree with
+   each other, so the band almost never contains the observed counts. The
+   uncertainty that matters here is structural, not parametric.
+3. **Two species fit on a search bound.** Kudu needs the lowest birth rate
+   and highest capacity allowed, and wildebeest the lowest capacity. Widening
+   the bounds would fit calibration better without fixing the holdout.
+4. **The restart split shows.** Restarting in 1979 re-seeds a 50/50
+   adult/juvenile split, which produces the sharp first-year kudu drop.
 
 ## Data structure
 
@@ -47,10 +89,11 @@ Two inputs are held separately, matching how the data actually gets sourced:
 
 Traits are stable constants; counts vary year to year. Keeping them apart means each carries its own provenance, and it avoids duplicating the biology across every count row.
 
-Two trait fields are optional overrides, left as `None` by default:
+Three trait fields are optional overrides, left empty by default:
 
 - `juv_death_rate` - falls back to the adult mortality rate
 - `carrying_capacity` - falls back to the biomass proxy below
+- `birth_multiplier` - falls back to 1 (one young per interbirth interval)
 
 Where a real value is available from literature, set it in the traits table; no code change needed.
 
@@ -64,10 +107,11 @@ and missing-value conventions are recorded in `data/README.md`.
   K = (Σ_i N_i * w_i) / w_target
   ```
   where `N_i` is total population of species `i`, `w_i` its average weight, and `w_target` the target species' average weight.
+  The calibrated evaluation instead uses `K = capacity_multiplier * peak 1965-1979 total`.
 
 - **Births per year** (females only):
   ```text
-  B = N_adult * (1 -  male_ratio) * r_birth
+  B = N_adult * (1 -  male_ratio) * r_birth * birth_multiplier
   r_birth = 365.25 / interbirth_interval_days   (fallback: 12 / gestation_period_months)
   ```
 
@@ -79,9 +123,9 @@ and missing-value conventions are recorded in `data/README.md`.
   D_juvenile = N_juvenile * d_juvenile
   ```
 
-- **Maturation from juveniles to adults**, sex-weighted and density-limited:
+- **Maturation from juveniles to adults**, sex-weighted, density-limited, and capped at surviving juveniles:
   ```text
-  M = N_juvenile * r_mat * f(K, N)
+  M = min(N_juvenile * r_mat * f(K, N), N_juvenile * (1 - d_juvenile))
   r_mat = (1 / m_male) * male_ratio + (1 / m_female) * (1 -  male_ratio)
   f(K, N) = max(0, 1 -  (N_adult + N_juvenile) / K)
   ```
@@ -92,123 +136,75 @@ and missing-value conventions are recorded in `data/README.md`.
   N_juvenile' = max(0, N_juvenile + B -  D_juvenile -  M)
   ```
 
-- **Validation**, for years present in both projection and observations:
-  ```text
-  error     = N_projected -  N_observed
-  pct_error = 100 * error / N_observed
-  ```
+- **Calibration**: grid search over juvenile mortality 0.10-0.60, birth
+  multiplier 0.5-1.0 and capacity multiplier 0.5-1.5, minimising mean
+  absolute error on reported 1966-1979 totals. Parameter sets within 10% of
+  the best error form the low/high scenario envelope. These bounds are a
+  defensible search range, not sourced values.
 
 ## Known simplifications
 
-Recorded openly rather than buried - these are the model's honest limits and the first targets for improvement.
+Recorded openly rather than buried - these are the model's honest limits.
 
-1. **Juvenile mortality defaults to the adult rate.** In reality juvenile mortality is usually much higher and often drives the dynamics. With the fallback in place the model tends to overshoot.
-2. **Carrying capacity is partly circular.** The biomass proxy infers capacity from the population already present rather than from habitat or resource limits, and it shifts depending on which species are included in the dataset.
-3. **Birth rate has no seasonality or age structure.** One young per interbirth interval for every adult female. Species without an interval (tsessebe, warthog) fall back to `12 / gestation_months`, i.e. back-to-back breeding.
+1. **Juvenile mortality is fitted, not sourced.** The trait-table fallback is the adult rate; the evaluation fits it within 0.10-0.60.
+2. **Carrying capacity is circular.** Both the biomass proxy and the calibration-peak capacity are inferred from counted animals rather than habitat or forage.
+3. **Birth rate has no seasonality or age structure.** One young per interbirth interval, scaled by a fitted multiplier. Species without an interval (tsessebe, warthog) fall back to `12 / gestation_months`.
 4. **Mortality is a flat annual hazard.** `1 / life_span_years` is not an age-structured survival curve.
 5. **Density dependence applies only to maturation**, not to births or mortality.
 6. **The adult/juvenile split is assumed, not observed.** Census totals have no stage breakdown, so every total is split 50/50 as a provisional placeholder until a literature-sourced stable stage proportion is selected. Override with `--juvenile_fraction`.
 7. **Sex-specific maturity is copied from one value.** PanTHERIA gives a single sexual maturity age, which is used for both males and females.
 8. **The male ratio is a 50/50 placeholder**, not a sourced value. Override with `--male_ratio`.
+9. **No environmental drivers.** Rainfall, drought, predation, disease and management removals are absent, so the model cannot produce the observed boom-and-bust.
 
 ## Known issues
 
-Holdout results from `make evaluate-model` (start 1965, calibration
-1965-1979, holdout 1980-1997, provisional 50/50 stage split and sex ratio,
-calibration-peak capacity). Juvenile mortality scenarios are 0.2/0.35/0.5
-per year, a sensitivity range rather than sourced values.
+1. **No holdout skill** for any species (see [Results](#results)).
+2. **The single-species CLI still uses the community-biomass proxy.** It treats
+   all counted herbivore biomass as available to one species, giving
+   capacities 8-30 times the observed peak, and silently drops species with no
+   start-year total (buffalo in 1965). Use `make evaluate-model` for the
+   calibrated model.
+3. **Kudu and wildebeest fit on search bounds**, a sign of structural misfit.
 
-| Species | Holdout error, % of observed mean | Naive constant baseline | Skill vs baseline |
-|---|---|---|---|
-| Wildebeest | 16-24% | 13% | -0.77 to -0.22 |
-| Waterbuck | 29-35% | 38% | +0.08 to +0.24 |
-| Kudu | 33-38% | 34% | -0.13 to +0.01 |
+## Possible extensions
 
-Skill above zero means the model beats holding the 1965 count constant.
-Before this pass, with gestation-based births and community-biomass
-capacity, error was 1,800-4,200% of the observed mean.
+If the population model is revisited before or alongside later portfolio
+phases:
 
-Open issues:
-
-1. **No useful skill yet.** The model roughly matches the naive baseline: it
-   is slightly better for waterbuck and worse for wildebeest.
-2. **Observed declines are missed.** All three species fell substantially
-   through the 1980s-1990s (waterbuck from ~4,000 to ~960). The model
-   settles near capacity and is biased high by 5-24%. Rainfall and drought,
-   predation and management are not represented.
-3. **The capacity that works is circular.** The calibration-peak capacity is
-   each species' own highest 1965-1979 count. It keeps the holdout honest but
-   is a diagnostic, not a habitat estimate.
-4. **The community-biomass proxy is still inflated.** It remains available
-   (`--capacity-mode community-biomass`) and is still used by the
-   single-species CLI. It treats all counted herbivore biomass as available
-   to one species, giving capacities 8-30 times the observed peak, and it
-   silently drops species with no start-year total (buffalo in 1965).
-5. **Juvenile mortality and the stage split are unsourced.** The scenario
-   range and the 50/50 split are placeholders pending literature values.
-6. **Tooling versions are unpinned.** `requirements.txt` does not pin
-   versions, so CI may install a different `black` or `pylint` from the one
-   used locally, and the formatting check can fail on unchanged code.
-
-## Planned next steps
-
-The detailed, checkpointed plan is in [`PLAN.md`](PLAN.md). A lean pass
-has covered the fair baseline (holdout scoring, naive baseline, trend
-metrics), interbirth-interval births, juvenile-mortality scenarios and a
-diagnostic capacity. Remaining, if this phase is revisited:
-
-1. Observed-versus-projected plots.
-2. Literature-sourced stage split and juvenile mortality.
+1. **Add rainfall as a driver.** SANParks publishes Kruger rainfall
+   (1911-2003) on the same DataONE portal as the census. Letting rainfall
+   modulate births or juvenile survival is the most direct test of whether
+   the missing dynamics are climatic.
+2. Replace the 50/50 stage split and the fitted juvenile mortality with
+   literature values.
 3. A habitat- or forage-based carrying capacity.
-4. Bounded calibration with low/central/high scenarios.
-5. An environmental driver (for example rainfall) to test whether it
-   explains the 1980s-1990s declines.
 
-Later portfolio phases, deliberately out of scope here: richer age/sex
-structure, predation, and spatial or habitat-based modelling.
+Later portfolio phases, deliberately out of scope here: spatial density
+mapping and validation against sighting data.
 
 ## Getting started
 
-1. Create and activate a Python virtual environment.
+1. Create and activate a Python 3.12+ virtual environment.
 2. Install requirements:
    ```bash
    make install
    ```
-3. Run the model:
+3. Reproduce the calibration, holdout scores and figure:
    ```bash
-   ./src/growth_model.py --species_name Wildebeest --start_year 1965 --forecast_horizon 6
+   make results
    ```
-4. Evaluate the 1980-1997 holdout across juvenile-mortality scenarios:
+4. Run a single-species projection:
    ```bash
-   make evaluate-model
+   ./src/growth_model.py --species_name Wildebeest --start_year 1965 --forecast_horizon 6 --juv_death_rate 0.35
    ```
+   `--start_year` must exist in the counts dataset for the chosen species, since the projection is initialised from observed values.
 5. Run the tests, lint and formatting check:
    ```bash
    make test lint format-check
    ```
 
-`--start_year` must exist in the counts dataset for the chosen species, since the projection is initialised from observed values.
-
-Example output (single-species CLI with the community-biomass capacity
-proxy, which still overshoots; see Known issues 4):
-
-```text
-$ ./src/growth_model.py --species_name Wildebeest --start_year 1965 --forecast_horizon 6 --juv_death_rate 0.35
-
-Projection for Wildebeest from 1965:
-  1965: adults=6518 juveniles=6518 total=13035
-  1966: adults=8747 juveniles=4965 total=13712
-  ...
-  1971: adults=18454 juveniles=10810 total=29264
-
-Validation against observed counts:
-  1965: projected=13035 observed=13035 error=+0 (+0.0%)
-  1969: projected=21687 observed=16072 error=+5615 (+34.9%)
-  1970: projected=25223 observed=13950 error=+11273 (+80.8%)
-  1971: projected=29264 observed=12557 error=+16707 (+133.0%)
-```
-
 ## Notes
 
-- This repository is a research prototype and should be extended before use in production analysis.
+- This repository is a research prototype, not a management tool.
 - Data provenance for every committed file is recorded in [`data/README.md`](data/README.md).
+- Dependencies are pinned in `requirements.txt` so CI and local runs use the same tools.

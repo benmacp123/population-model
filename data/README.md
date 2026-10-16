@@ -71,14 +71,14 @@ sensitivity-tested when a literature-based stage proportion is selected.
 and male ratios against the reported totals. Its output is diagnostic only;
 the best numerical fit is not automatically a biologically valid parameter.
 
-`scripts/evaluate_model.py` reports backtest accuracy for the forecastable
-species. Forecasts start from the 1965 total; 1965-1979 is a calibration
-period and only the 1980-1997 reported totals are scored, so neither the
-initialization row nor the years used to set capacity count as independent
-predictions. It reports normalized MAE, signed bias, skill against a naive
-constant-population baseline, and trend-direction agreement, for low, central
-and high juvenile-mortality scenarios. Those scenario values are a
-sensitivity range, not literature-sourced rates.
+`scripts/evaluate_model.py` calibrates juvenile mortality, a birth
+multiplier and a capacity multiplier on 1965-1979 only, restarts the
+forecast from the last 1965-1979 reported total, and scores the 1980-1997
+reported totals against a persistence baseline. The search bounds are a
+defensible range, not literature-sourced rates. Results are written to
+`results/backtest_summary.csv` and `results/backtest_projections.csv`;
+`scripts/plot_backtest.py` draws `results/backtest.png` from them. These
+outputs are derived and can be regenerated with `make results`.
 
 `raw/species_counts.csv` is the normalized candidate-species extract produced
 by `scripts/parse_counts.py`. It keeps rows whose reported total is missing

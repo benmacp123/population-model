@@ -18,9 +18,14 @@ tune-assumptions:
 evaluate-model:
 	PYTHONPATH=src python scripts/evaluate_model.py
 
+plot-backtest:
+	python scripts/plot_backtest.py
+
+results: evaluate-model plot-backtest
+
 
 test:
-	PYTHONPATH=src python -m pytest -vv --cov=growth_model tests/*
+	PYTHONPATH=src python -m pytest -vv --cov=growth_model --cov=calibration tests/*
 
 
 format:
@@ -31,7 +36,7 @@ format-check:
 
 
 lint:
-	python -m pylint --disable=R,C src/growth_model.py
+	PYTHONPATH=src python -m pylint --disable=R,C src/*.py scripts/*.py
 
 
 all: install format lint test

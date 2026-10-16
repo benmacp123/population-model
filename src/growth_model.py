@@ -25,6 +25,11 @@ KNOWN SIMPLIFICATIONS (documented, to be improved later)
    hazard rather than an age-structured survival curve.
 5. Density dependence is applied only to the maturation term, not to births
    or mortality.
+6. Juveniles that die in a year cannot also mature that year: maturation is
+   capped at the surviving share of juveniles.
+7. An optional ``birth_multiplier`` trait scales births below the
+   one-per-interbirth-interval maximum (e.g. females that skip a year). It is
+   a bounded calibration parameter, not a sourced value.
 """
 
 from pathlib import Path
@@ -214,6 +219,12 @@ def _normalize_record(record: Union[pd.Series, Dict[str, Any]]) -> Dict[str, Any
     raise TypeError("record must be a pandas Series or a dict")
 
 
+def _optional_trait(traits: Dict[str, Any], field: str, default: float) -> float:
+    """Return a numeric trait, or ``default`` when it is unset or missing."""
+    value = traits.get(field)
+    return default if value is None or pd.isna(value) else float(value)
+
+
 def annual_birth_rate(traits: Dict[str, Any]) -> float:
     """Young per adult female per year (see simplification 3).
 
@@ -272,14 +283,16 @@ def population_change(
     birth_rate = annual_birth_rate(t)
     adult_death_rate = 1.0 / float(t["life_span_years"])
 
-    juv_rate = t.get("juv_death_rate")
-    juv_death_rate = (
-        adult_death_rate if juv_rate is None or pd.isna(juv_rate) else float(juv_rate)
-    )
+    juv_death_rate = _optional_trait(t, "juv_death_rate", adult_death_rate)
 
     male_ratio = float(t["male_ratio"])
     female_ratio = 1.0 - male_ratio
-    births = adult_pop * female_ratio * birth_rate
+    births = (
+        adult_pop
+        * female_ratio
+        * birth_rate
+        * _optional_trait(t, "birth_multiplier", 1.0)
+    )
 
     sex_mat_rate = (1.0 / float(t["sex_matur_m_years"])) * male_ratio + (
         1.0 / float(t["sex_matur_f_years"])
@@ -289,7 +302,10 @@ def population_change(
     if carrying_capacity and carrying_capacity > 0:
         carrying_factor = max(0.0, 1.0 - (adult_pop + juvenile_pop) / carrying_capacity)
 
-    matured_juveniles = juvenile_pop * sex_mat_rate * carrying_factor
+    matured_juveniles = min(
+        juvenile_pop * sex_mat_rate * carrying_factor,
+        juvenile_pop * max(0.0, 1.0 - juv_death_rate),
+    )
 
     new_adult_pop = max(
         0.0,
@@ -341,16 +357,45 @@ def forecast_population(
             f"No observed count for '{species_name}' in {start_year} to start from."
         )
 
-    adult_pop = float(start_counts.iloc[0]["adult_pop"])
-    juvenile_pop = float(start_counts.iloc[0]["juvenile_pop"])
     carrying_capacity = calc_carrying_capacity(traits, traits_df, counts_df, start_year)
+    return project_population(
+        traits,
+        float(start_counts.iloc[0]["adult_pop"]),
+        float(start_counts.iloc[0]["juvenile_pop"]),
+        carrying_capacity,
+        start_year,
+        forecast_horizon,
+    )
 
+
+def project_population(
+    traits: Dict[str, Any],
+    adult_pop: float,
+    juvenile_pop: float,
+    carrying_capacity: Optional[float],
+    start_year: int,
+    forecast_horizon: int,
+) -> pd.DataFrame:
+    """
+    Project given starting stages forward with a fixed carrying capacity.
+
+    Args:
+        traits (Dict[str, Any]): Species trait record.
+        adult_pop (float): Adult population in the start year.
+        juvenile_pop (float): Juvenile population in the start year.
+        carrying_capacity (Optional[float]): Capacity in individuals.
+        start_year (int): First year of the projection.
+        forecast_horizon (int): Number of years to project.
+
+    Returns:
+        pd.DataFrame: Year-by-year projected populations.
+    """
     rows = []
     for year in range(start_year, start_year + forecast_horizon + 1):
         rows.append(
             {
                 "year": year,
-                "name": species_name,
+                "name": traits.get("name"),
                 "adult_pop": adult_pop,
                 "juvenile_pop": juvenile_pop,
                 "total_pop": adult_pop + juvenile_pop,

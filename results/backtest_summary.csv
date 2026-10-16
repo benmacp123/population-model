@@ -1,0 +1,4 @@
+species,juv_death_rate,birth_multiplier,capacity_multiplier,params_on_bound,scenario_sets,calibration_nmae_pct,years_scored,normalized_mae_pct,bias_pct,baseline_normalized_mae_pct,skill_vs_baseline,step_direction_agreement,overall_trend_match,band_coverage
+Wildebeest,0.4,0.9,0.5,capacity_multiplier,8,10.98,16,41.063,-41.063,39.455,-0.041,0.267,False,0.0
+Waterbuck,0.4,0.6,0.9,none,28,10.633,16,38.773,-22.955,33.483,-0.158,0.267,False,0.062
+Kudu,0.55,0.5,1.5,"birth_multiplier, capacity_multiplier",5,12.799,16,42.96,20.122,36.441,-0.179,0.333,False,0.0
