@@ -12,9 +12,6 @@ build-traits:
 parse-counts:
 	python scripts/parse_counts.py
 
-tune-assumptions:
-	PYTHONPATH=src python scripts/tune_assumptions.py
-
 evaluate-model:
 	PYTHONPATH=src python scripts/evaluate_model.py
 

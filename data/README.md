@@ -67,10 +67,6 @@ fraction, giving an assumed 50/50 adult/juvenile split for every reported
 total. This is a temporary modelling assumption and must be replaced or
 sensitivity-tested when a literature-based stage proportion is selected.
 
-`scripts/tune_assumptions.py` evaluates a small grid of juvenile fractions
-and male ratios against the reported totals. Its output is diagnostic only;
-the best numerical fit is not automatically a biologically valid parameter.
-
 `scripts/evaluate_model.py` calibrates juvenile mortality, a birth
 multiplier and a capacity multiplier on 1965-1979 only, restarts the
 forecast from the last 1965-1979 reported total, and scores the 1980-1997

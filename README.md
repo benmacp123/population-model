@@ -27,7 +27,7 @@ The active species are wildebeest, waterbuck and kudu. Zebra is excluded
 until its missing reproductive traits are sourced. The census series stops at
 1997 because Kruger moved from total counts to distance sampling in 1998.
 
-**Status: phase complete, result negative.** The model reproduces the
+**Status: complete, result negative.** The model reproduces the
 calibration period to within 11-13% but has no forecasting skill on the
 holdout: it is slightly worse than carrying the 1979 count forward for all
 three species, and misses the 1980s rise and 1990s collapse. See
@@ -166,21 +166,29 @@ Recorded openly rather than buried - these are the model's honest limits.
    calibrated model.
 3. **Kudu and wildebeest fit on search bounds**, a sign of structural misfit.
 
-## Possible extensions
+## What I would do next
 
-If the population model is revisited before or alongside later portfolio
-phases:
+The project is closed, but a review of the method identified what a second
+iteration should change:
 
-1. **Add rainfall as a driver.** SANParks publishes Kruger rainfall
-   (1911-2003) on the same DataONE portal as the census. Letting rainfall
-   modulate births or juvenile survival is the most direct test of whether
-   the missing dynamics are climatic.
-2. Replace the 50/50 stage split and the fitted juvenile mortality with
-   literature values.
-3. A habitat- or forage-based carrying capacity.
-
-Later portfolio phases, deliberately out of scope here: spatial density
-mapping and validation against sighting data.
+1. **Model observation error explicitly.** Single-year swings of +82% (kudu)
+   and +55% (waterbuck) exceed what these species can biologically achieve,
+   so much of the year-to-year variation is survey noise. A state-space
+   model (density-dependent growth with separate process and observation
+   error) separates the two - the same problem as state estimation with a
+   Kalman filter in power-system monitoring.
+2. **Use fewer, identifiable parameters.** PanTHERIA traits are
+   species-level life history, not population vital rates, and three
+   parameters fitted to ~9 calibration points are poorly identified. A
+   Gompertz or Ricker model with traits used only as a sanity check on the
+   fitted growth rate is more defensible.
+3. **Test forecasts more fairly.** One-step-ahead and rolling-origin
+   forecasts give far more evaluation points than a single 15-year
+   projection, plus a check that uncertainty bands cover the observations at
+   their stated rate.
+4. **Add rainfall as a covariate.** SANParks publishes Kruger rainfall
+   (1911-2003) on the same DataONE portal as the census; published Kruger
+   studies link these declines to rainfall.
 
 ## Getting started
 
