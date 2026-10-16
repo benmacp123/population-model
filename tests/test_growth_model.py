@@ -5,7 +5,10 @@ import pytest
 
 from growth_model import (
     adult_pop_change,
+    annual_birth_rate,
+    backtest_metrics,
     calc_carrying_capacity,
+    calibration_peak_capacity,
     compare_to_counts,
     forecast_population,
     get_species_counts,
@@ -108,9 +111,37 @@ def test_carrying_capacity_returns_zero_for_unobserved_year(
     assert calc_carrying_capacity(traits, traits_df, counts_df, 1999) == 0.0
 
 
+def test_calibration_peak_capacity_ignores_holdout_years():
+    counts = pd.DataFrame(
+        {
+            "name": ["TestBuck"] * 4,
+            "year": [1965, 1970, 1975, 1980],
+            "total_pop": [100.0, None, 140.0, 500.0],
+        }
+    )
+    assert calibration_peak_capacity(counts, "TestBuck", 1979) == 140.0
+
+
+def test_calibration_peak_capacity_rejects_empty_period():
+    counts = pd.DataFrame({"name": ["TestBuck"], "year": [1980], "total_pop": [500.0]})
+    with pytest.raises(ValueError):
+        calibration_peak_capacity(counts, "TestBuck", 1979)
+
+
 # ---------------------------------------------------------------------------
 # Annual step
 # ---------------------------------------------------------------------------
+
+
+def test_birth_rate_uses_interbirth_interval_when_available(traits):
+    with_interval = dict(traits, interbirth_interval_days=730.5)
+    assert annual_birth_rate(with_interval) == pytest.approx(0.5)
+
+
+def test_birth_rate_falls_back_to_gestation(traits):
+    for interval in (None, float("nan")):
+        record = dict(traits, interbirth_interval_days=interval)
+        assert annual_birth_rate(record) == pytest.approx(1.0)
 
 
 def test_population_change_returns_all_three_totals(traits):
@@ -316,3 +347,36 @@ def test_run_growth_model_prints_projection_and_validation(capfd):
     assert "Projection for Wildebeest from 1965:" in out
     assert "Validation against observed counts:" in out
     assert "1965:" in out
+
+
+# ---------------------------------------------------------------------------
+# Backtest scoring
+# ---------------------------------------------------------------------------
+
+
+def test_backtest_metrics_scores_level_trend_and_baseline():
+    comparison = pd.DataFrame(
+        {
+            "observed_total": [100.0, 120.0, 90.0],
+            "projected_total": [110.0, 130.0, 80.0],
+        }
+    )
+    metrics = backtest_metrics(comparison, baseline_total=100.0)
+
+    observed_mean = 310.0 / 3
+    assert metrics["years_scored"] == 3
+    assert metrics["normalized_mae_pct"] == pytest.approx(1000.0 / observed_mean)
+    assert metrics["bias_pct"] == pytest.approx(100.0 * (10 / 3) / observed_mean)
+    # Baseline errors are 0, 20 and 10: MAE 10, the same as the model's.
+    assert metrics["skill_vs_baseline"] == pytest.approx(0.0)
+    assert metrics["step_direction_agreement"] == pytest.approx(1.0)
+    assert metrics["overall_trend_match"] is True
+
+
+def test_backtest_metrics_flags_opposite_trend():
+    comparison = pd.DataFrame(
+        {"observed_total": [100.0, 80.0], "projected_total": [100.0, 120.0]}
+    )
+    metrics = backtest_metrics(comparison, baseline_total=100.0)
+    assert metrics["step_direction_agreement"] == 0.0
+    assert metrics["overall_trend_match"] is False

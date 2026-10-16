@@ -18,8 +18,9 @@ KNOWN SIMPLIFICATIONS (documented, to be improved later)
    year rather than a habitat/resource limit. This makes capacity partly
    circular (inferred from the population already present) and sensitive to
    which species are included in the dataset.
-3. Birth rate is derived as 12 / gestation_months, i.e. continuous
-   back-to-back breeding with no inter-birth interval and no seasonality.
+3. Birth rate is one young per interbirth interval (365.25 / interbirth
+   days) with no seasonality. Where the interval is missing it falls back to
+   12 / gestation_months, i.e. continuous back-to-back breeding.
 4. Adult mortality is derived as 1 / life_span_years, i.e. a flat annual
    hazard rather than an age-structured survival curve.
 5. Density dependence is applied only to the maturation term, not to births
@@ -30,9 +31,11 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 import click
+import numpy as np
 import pandas as pd
 
 ACTIVE_SPECIES = ("Wildebeest", "Waterbuck", "Kudu")
+DAYS_PER_YEAR = 365.25
 
 
 # ---------------------------------------------------------------------------
@@ -211,6 +214,24 @@ def _normalize_record(record: Union[pd.Series, Dict[str, Any]]) -> Dict[str, Any
     raise TypeError("record must be a pandas Series or a dict")
 
 
+def annual_birth_rate(traits: Dict[str, Any]) -> float:
+    """Young per adult female per year (see simplification 3).
+
+    Uses the interbirth interval where available, otherwise assumes
+    back-to-back breeding from gestation length.
+
+    Args:
+        traits: Species trait record.
+
+    Returns:
+        Annual births per adult female.
+    """
+    interval = traits.get("interbirth_interval_days")
+    if interval is not None and not pd.isna(interval) and float(interval) > 0:
+        return DAYS_PER_YEAR / float(interval)
+    return 12.0 / float(traits["gestation_period_months"])
+
+
 def population_change(
     traits: Union[pd.Series, Dict[str, Any]],
     adult_pop: float,
@@ -248,7 +269,7 @@ def population_change(
             f"Missing required traits for population change: {missing_traits}"
         )
 
-    birth_rate = 12.0 / float(t["gestation_period_months"])
+    birth_rate = annual_birth_rate(t)
     adult_death_rate = 1.0 / float(t["life_span_years"])
 
     juv_rate = t.get("juv_death_rate")
@@ -375,6 +396,78 @@ def compare_to_counts(
     return merged
 
 
+def calibration_peak_capacity(
+    counts_df: pd.DataFrame, species_name: str, calibration_end: int
+) -> float:
+    """Diagnostic capacity: the highest reported total up to a cutoff year.
+
+    This is circular by construction (inferred from the species' own counts)
+    and is a stand-in for a habitat-based capacity, not an estimate of one.
+    Only years up to ``calibration_end`` are used, so later years remain an
+    independent holdout.
+
+    Args:
+        counts_df: Observed counts.
+        species_name: Species to estimate capacity for.
+        calibration_end: Last year included in the calibration period.
+
+    Returns:
+        Capacity in individuals.
+
+    Raises:
+        ValueError: If the species has no reported total in the period.
+    """
+    observed = counts_df[
+        (counts_df["name"] == species_name) & (counts_df["year"] <= calibration_end)
+    ]["total_pop"].dropna()
+    if observed.empty:
+        raise ValueError(
+            f"No reported totals for '{species_name}' up to {calibration_end}."
+        )
+    return float(observed.max())
+
+
+def backtest_metrics(comparison: pd.DataFrame, baseline_total: float) -> Dict:
+    """Score a projection on level and trend against a naive baseline.
+
+    The naive baseline holds the population constant at ``baseline_total``
+    (normally the start-year count). Skill above zero means the model's mean
+    absolute error is lower than the baseline's.
+
+    Args:
+        comparison: Output of ``compare_to_counts`` restricted to the years
+            being scored (exclude the initialization year).
+        baseline_total: Constant population used by the naive baseline.
+
+    Returns:
+        A dictionary of accuracy metrics.
+    """
+    observed = comparison["observed_total"].to_numpy(dtype=float)
+    projected = comparison["projected_total"].to_numpy(dtype=float)
+    errors = projected - observed
+    mae = float(np.abs(errors).mean())
+    baseline_mae = float(np.abs(baseline_total - observed).mean())
+    observed_mean = float(observed.mean())
+
+    step_agreement = np.nan
+    if len(observed) > 1:
+        step_agreement = float(
+            (np.sign(np.diff(observed)) == np.sign(np.diff(projected))).mean()
+        )
+
+    return {
+        "years_scored": len(observed),
+        "normalized_mae_pct": 100.0 * mae / observed_mean,
+        "bias_pct": 100.0 * float(errors.mean()) / observed_mean,
+        "baseline_normalized_mae_pct": 100.0 * baseline_mae / observed_mean,
+        "skill_vs_baseline": (1.0 - mae / baseline_mae if baseline_mae > 0 else np.nan),
+        "step_direction_agreement": step_agreement,
+        "overall_trend_match": bool(
+            np.sign(observed[-1] - observed[0]) == np.sign(projected[-1] - projected[0])
+        ),
+    }
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -386,6 +479,7 @@ def run_growth_model(
     forecast_horizon: int,
     juvenile_fraction: float = 0.5,
     male_ratio: float = 0.5,
+    juv_death_rate: Optional[float] = None,
 ) -> None:
     """
     Run the forecast and validation for one species and print the results.
@@ -396,9 +490,13 @@ def run_growth_model(
         forecast_horizon (int): Number of years to project.
         juvenile_fraction: Assumed juvenile share of observed totals.
         male_ratio: Assumed male share of the population.
+        juv_death_rate: Annual juvenile mortality override. ``None`` keeps
+            the traits table value, which falls back to adult mortality.
     """
     traits_df = load_species_traits("data/raw/species_traits.csv")
     traits_df["male_ratio"] = male_ratio
+    if juv_death_rate is not None:
+        traits_df["juv_death_rate"] = juv_death_rate
     counts_df = load_species_counts("data/raw/species_counts.csv", juvenile_fraction)
 
     forecast_df = forecast_population(
@@ -446,12 +544,19 @@ def run_growth_model(
     show_default=True,
     help="Assumed male share of the population.",
 )
+@click.option(
+    "--juv_death_rate",
+    default=None,
+    type=click.FloatRange(0.0, 1.0),
+    help="Annual juvenile mortality. Defaults to the adult rate.",
+)
 def growth_model(
     species_name: str,
     start_year: int,
     forecast_horizon: int,
     juvenile_fraction: float,
     male_ratio: float,
+    juv_death_rate: Optional[float],
 ) -> None:
     """Run the population forecast CLI command.
 
@@ -461,6 +566,7 @@ def growth_model(
         forecast_horizon: Number of annual steps to project.
         juvenile_fraction: Assumed juvenile share of observed totals.
         male_ratio: Assumed male share of the population.
+        juv_death_rate: Annual juvenile mortality override.
     """
     run_growth_model(
         species_name,
@@ -468,6 +574,7 @@ def growth_model(
         forecast_horizon,
         juvenile_fraction,
         male_ratio,
+        juv_death_rate,
     )
 
 

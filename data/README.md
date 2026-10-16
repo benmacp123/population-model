@@ -72,10 +72,13 @@ and male ratios against the reported totals. Its output is diagnostic only;
 the best numerical fit is not automatically a biologically valid parameter.
 
 `scripts/evaluate_model.py` reports backtest accuracy for the forecastable
-species. It uses only rows with reported totals and provides MAE, RMSE, MAPE,
-normalized MAE, and signed bias. The 1965 starting row is an initialization
-point, so it will have zero error by construction and should not be treated
-as an independent accuracy result.
+species. Forecasts start from the 1965 total; 1965-1979 is a calibration
+period and only the 1980-1997 reported totals are scored, so neither the
+initialization row nor the years used to set capacity count as independent
+predictions. It reports normalized MAE, signed bias, skill against a naive
+constant-population baseline, and trend-direction agreement, for low, central
+and high juvenile-mortality scenarios. Those scenario values are a
+sensitivity range, not literature-sourced rates.
 
 `raw/species_counts.csv` is the normalized candidate-species extract produced
 by `scripts/parse_counts.py`. It keeps rows whose reported total is missing
