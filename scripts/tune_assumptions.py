@@ -15,7 +15,6 @@ from growth_model import (
     load_species_traits,
 )
 
-
 DEFAULT_JUVENILE_FRACTIONS = tuple(np.arange(0.1, 0.51, 0.1))
 DEFAULT_MALE_RATIOS = tuple(np.arange(0.3, 0.71, 0.1))
 
@@ -97,9 +96,7 @@ def main(
     forecast_horizon: int,
 ) -> None:
     """Print the best tested assumption combination for each species."""
-    results = tune_assumptions(
-        traits_path, counts_path, start_year, forecast_horizon
-    )
+    results = tune_assumptions(traits_path, counts_path, start_year, forecast_horizon)
     best = results.loc[
         results.groupby("species")["mean_absolute_error"].idxmin()
     ].sort_values("species")

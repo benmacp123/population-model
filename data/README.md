@@ -49,8 +49,9 @@ object has MD5 checksum `48938704ad3613b903e6093b9c69a6fa`.
 The file is tabular text with year, species, regional counts, and a `TOTAL`
 column. The normalized extract includes all census species so their body
 masses can contribute to the community biomass proxy. The
-downloaded file is retained unchanged as provenance evidence; it still needs
-to be normalized into the model's counts schema. Missing regional cells and
+downloaded file is retained unchanged as provenance evidence and is
+normalized into the model's counts schema by `scripts/parse_counts.py`
+(described below). Missing regional cells and
 years with incomplete coverage must not automatically be interpreted as
 zero. The total-count series must remain limited to 1965-1997 because the
 survey methodology changed in 1998.

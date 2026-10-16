@@ -17,7 +17,6 @@ from growth_model import (
     run_growth_model,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -48,8 +47,18 @@ def traits_df(traits):
 def counts_df():
     return pd.DataFrame(
         [
-            {"name": "TestBuck", "year": 2018, "adult_pop": 100.0, "juvenile_pop": 50.0},
-            {"name": "TestBuck", "year": 2020, "adult_pop": 130.0, "juvenile_pop": 60.0},
+            {
+                "name": "TestBuck",
+                "year": 2018,
+                "adult_pop": 100.0,
+                "juvenile_pop": 50.0,
+            },
+            {
+                "name": "TestBuck",
+                "year": 2020,
+                "adult_pop": 130.0,
+                "juvenile_pop": 60.0,
+            },
         ]
     ).assign(total_pop=lambda df: df["adult_pop"] + df["juvenile_pop"])
 
@@ -80,7 +89,9 @@ def test_juv_pop_change():
 # ---------------------------------------------------------------------------
 
 
-def test_carrying_capacity_uses_explicit_value_when_supplied(traits, traits_df, counts_df):
+def test_carrying_capacity_uses_explicit_value_when_supplied(
+    traits, traits_df, counts_df
+):
     traits["carrying_capacity"] = 1234.0
     assert calc_carrying_capacity(traits, traits_df, counts_df, 2018) == 1234.0
 
@@ -91,7 +102,9 @@ def test_carrying_capacity_falls_back_to_biomass_proxy(traits, traits_df, counts
     assert capacity == pytest.approx(150.0)
 
 
-def test_carrying_capacity_returns_zero_for_unobserved_year(traits, traits_df, counts_df):
+def test_carrying_capacity_returns_zero_for_unobserved_year(
+    traits, traits_df, counts_df
+):
     assert calc_carrying_capacity(traits, traits_df, counts_df, 1999) == 0.0
 
 
@@ -293,8 +306,7 @@ def test_placeholder_counts_total_is_consistent():
     counts = get_species_counts()
     complete = counts.dropna(subset=["total_pop"])
     assert (
-        complete["total_pop"]
-        == complete["adult_pop"] + complete["juvenile_pop"]
+        complete["total_pop"] == complete["adult_pop"] + complete["juvenile_pop"]
     ).all()
 
 

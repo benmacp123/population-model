@@ -6,12 +6,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Set up Python 3.11
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v5
       with:
-        python-version: 3.11
-    - name: Install Depedencies
+        python-version: "3.11"
+    - name: Install Dependencies
       run: |
         make install
     - name: Lint with Pylint
@@ -20,6 +20,6 @@ jobs:
     - name: Test with Pytest
       run: |
         make test
-    - name: Format code
+    - name: Check formatting
       run: |
-        make format
+        make format-check

@@ -52,9 +52,7 @@ def parse_counts(input_path: Path, output_path: Path) -> pd.DataFrame:
     if not selected["year"].between(1965, 1997).all():
         raise ValueError("Census counts must be limited to 1965-1997.")
 
-    counts = selected[["name", "year", "TOTAL"]].rename(
-        columns={"TOTAL": "total_pop"}
-    )
+    counts = selected[["name", "year", "TOTAL"]].rename(columns={"TOTAL": "total_pop"})
     counts["total_pop"] = pd.to_numeric(counts["total_pop"], errors="coerce")
     counts["source_record"] = SOURCE_RECORD
     counts["source_object"] = SOURCE_OBJECT

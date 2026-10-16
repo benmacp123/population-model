@@ -61,7 +61,9 @@ def evaluate_model(
                 "observations_used": len(comparison),
                 "mae": errors.abs().mean(),
                 "rmse": np.sqrt((errors**2).mean()),
-                "mape_pct": (100.0 * errors.abs() / comparison["observed_total"]).mean(),
+                "mape_pct": (
+                    100.0 * errors.abs() / comparison["observed_total"]
+                ).mean(),
                 "normalized_mae_pct": 100.0 * errors.abs().mean() / observed_mean,
                 "mean_bias": errors.mean(),
             }

@@ -24,11 +24,14 @@ test:
 
 
 format:
-	black src/*.py tests/*.py
+	black src/*.py tests/*.py scripts/*.py
+
+format-check:
+	black --check src/*.py tests/*.py scripts/*.py
 
 
 lint:
 	python -m pylint --disable=R,C src/growth_model.py
 
 
-all: install test format lint
+all: install format lint test

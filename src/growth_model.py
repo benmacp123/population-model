@@ -239,7 +239,8 @@ def population_change(
         "sex_matur_f_years",
     ]
     missing_traits = [
-        field for field in required_traits
+        field
+        for field in required_traits
         if t.get(field) is None or pd.isna(t.get(field))
     ]
     if missing_traits:
@@ -265,14 +266,13 @@ def population_change(
 
     carrying_factor = 1.0
     if carrying_capacity and carrying_capacity > 0:
-        carrying_factor = max(
-            0.0, 1.0 - (adult_pop + juvenile_pop) / carrying_capacity
-        )
+        carrying_factor = max(0.0, 1.0 - (adult_pop + juvenile_pop) / carrying_capacity)
 
     matured_juveniles = juvenile_pop * sex_mat_rate * carrying_factor
 
     new_adult_pop = max(
-        0.0, adult_pop + adult_pop_change(adult_pop, matured_juveniles, adult_death_rate)
+        0.0,
+        adult_pop + adult_pop_change(adult_pop, matured_juveniles, adult_death_rate),
     )
     new_juvenile_pop = max(
         0.0,
@@ -322,9 +322,7 @@ def forecast_population(
 
     adult_pop = float(start_counts.iloc[0]["adult_pop"])
     juvenile_pop = float(start_counts.iloc[0]["juvenile_pop"])
-    carrying_capacity = calc_carrying_capacity(
-        traits, traits_df, counts_df, start_year
-    )
+    carrying_capacity = calc_carrying_capacity(traits, traits_df, counts_df, start_year)
 
     rows = []
     for year in range(start_year, start_year + forecast_horizon + 1):
@@ -401,9 +399,7 @@ def run_growth_model(
     """
     traits_df = load_species_traits("data/raw/species_traits.csv")
     traits_df["male_ratio"] = male_ratio
-    counts_df = load_species_counts(
-        "data/raw/species_counts.csv", juvenile_fraction
-    )
+    counts_df = load_species_counts("data/raw/species_counts.csv", juvenile_fraction)
 
     forecast_df = forecast_population(
         traits_df, counts_df, species_name, start_year, forecast_horizon
@@ -431,9 +427,7 @@ def run_growth_model(
 
 
 @click.command()
-@click.option(
-    "--species_name", default="Wildebeest", help="Species to forecast."
-)
+@click.option("--species_name", default="Wildebeest", help="Species to forecast.")
 @click.option("--start_year", default=1965, type=int, help="Year to initialise from.")
 @click.option(
     "--forecast_horizon", default=6, type=int, help="Number of years to project."

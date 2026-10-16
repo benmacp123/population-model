@@ -9,21 +9,29 @@ The model is initialised from one year of observed counts, projected forward yea
 
 ## Current work
 
-The current prototype includes a small executable model and a normalized
-PanTHERIA traits extract. It:
+The prototype runs end to end from committed data. It:
 
 - keeps species traits and year-by-year counts as separate datasets
 - derives `data/raw/species_traits.csv` from the committed PanTHERIA WR05 file
+- normalizes the SANParks 1965-1997 fixed-wing total-count series into
+  `data/raw/species_counts.csv`, with a source citation on every row and
+  missing totals left missing rather than zero
 - computes carrying capacity, either from an explicit per-species value or from a total-biomass proxy
 - projects adult and juvenile populations forward from a chosen start year
 - applies birth, mortality and maturation dynamics with density dependence
 - compares the projection against observed counts and reports absolute and percentage error
+- reports backtest accuracy (`make evaluate-model`) and a diagnostic
+  assumption grid (`make tune-assumptions`)
 - exposes all of this through a `click` CLI
 
-The Kruger census counts are not included yet. They will be transcribed from
-an authoritative SANParks or published source and must remain within the
-1965-1997 total-count period. The simplifications below are deliberate and
-documented.
+The active species are wildebeest, waterbuck and kudu. Zebra is excluded
+until its missing reproductive traits are sourced. The census series stops at
+1997 because Kruger moved from total counts to distance sampling in 1998.
+
+**Status: exploratory.** The current backtest overshoots observed totals by
+an order of magnitude for all three species (see [Known issues](#known-issues)).
+Forecasts should not be read as ecological predictions yet. The improvement
+path is set out in [`PLAN.md`](PLAN.md).
 
 ## Data structure
 
@@ -96,65 +104,107 @@ Recorded openly rather than buried - these are the model's honest limits and the
 3. **Birth rate assumes continuous breeding.** `12 / gestation_months` implies back-to-back reproduction with no inter-birth interval and no seasonality.
 4. **Mortality is a flat annual hazard.** `1 / life_span_years` is not an age-structured survival curve.
 5. **Density dependence applies only to maturation**, not to births or mortality.
+6. **The adult/juvenile split is assumed, not observed.** Census totals have no stage breakdown, so every total is split 50/50 as a provisional placeholder until a literature-sourced stable stage proportion is selected. Override with `--juvenile_fraction`.
+7. **Sex-specific maturity is copied from one value.** PanTHERIA gives a single sexual maturity age, which is used for both males and females.
+8. **The male ratio is a 50/50 placeholder**, not a sourced value. Override with `--male_ratio`.
+
+## Known issues
+
+Observed in the current 1965-1997 backtest (default 50/50 assumptions,
+start year 1965). These are the targets for the next round of work in
+[`PLAN.md`](PLAN.md).
+
+| Species | Normalized MAE | Capacity proxy (K) | Highest observed total | Implied births per female per year |
+|---|---|---|---|---|
+| Wildebeest | ~1,800% | ~124,700 | 16,072 | 1.45 |
+| Waterbuck | ~4,200% | ~121,200 | 5,042 | 1.35 |
+| Kudu | ~3,500% | ~120,200 | 10,760 | 1.65 |
+
+1. **Runaway growth.** All three species grow roughly exponentially and
+   overshoot observed totals by an order of magnitude or more. Simplifications
+   1, 3 and 5 compound: births are too high, juveniles die too slowly, and
+   density dependence never restrains births.
+2. **The birth rate is implausibly high.** `12 / gestation_months` gives
+   1.3-1.7 young per female per year. These species typically produce about
+   one per year, and `interbirth_interval_days` (365 days for all three) is
+   already in the traits table but unused.
+3. **Carrying capacity barely binds.** The biomass proxy treats the entire
+   counted herbivore community's biomass as available to each single species,
+   so K is roughly 8-30 times the highest observed total and the density
+   factor stays near 1 until the projection is far too large.
+4. **The capacity proxy silently drops species with no start-year count.**
+   Missing totals are skipped in the biomass sum, so K depends on which
+   species happened to be reported in the start year (buffalo, for example,
+   has no 1965 total). Changing the start year can redefine K for reasons
+   unrelated to the target species.
+5. **The start year is scored as a prediction.** The initialization row has
+   zero error by construction but is included in the accuracy metrics, which
+   flatters them slightly.
+6. **Accuracy metrics measure magnitude only.** There is no trend-direction
+   score and no comparison against a naive constant-population baseline, so
+   the report cannot yet say whether the model captures increase or decline.
+7. **Tooling versions are unpinned.** `requirements.txt` does not pin
+   versions, so CI may install a different `black` or `pylint` from the one
+   used locally, and the formatting check can fail on unchanged code.
 
 ## Planned next steps
 
-1. **Connect the real datasets**
-  -  transcribe Kruger counts from 1965-1997 census reports, with a source citation per row
-  -  complete missing zebra demographic parameters from a suitable literature source
-  -  load the committed CSVs in the model rather than using placeholder in-code definitions
+The detailed, checkpointed plan is in [`PLAN.md`](PLAN.md). In summary:
 
-2. **Calibrate against observed counts**
-   -  use the validation output to fit juvenile mortality and carrying capacity rather than assuming them
-   -  report fit quality across species
+1. **Establish a fair baseline** - separate initialization from evaluation,
+   add trend metrics and a constant-population baseline, plot observed versus
+   projected totals.
+2. **Fix the largest biological pressure points** - interbirth-interval
+   births, explicit juvenile mortality, sensitivity-tested stage split.
+3. **Improve carrying capacity** - make its source explicit and stop it
+   depending silently on the species set.
+4. **Calibrate for trend, not exact counts** - bounded fits with a holdout
+   period and low/central/high scenarios.
+5. **Make the result presentable** - reproducible evaluation command, results
+   table and plots.
 
-3. **Add richer demographic structure**
-   -  age classes beyond adult/juvenile
-   -  sex-specific populations and fertility
-   -  explicit stage transitions rather than a single maturation term
-
-4. **Incorporate predation and density dependence**
-   -  predator-driven mortality or harvest pressure
-   -  resource limits affecting birth and survival rates
-   -  Allee effects or density-dependent reproduction
-
-5. **Move toward spatial / GIS-aware modelling**
-   -  habitat quality and resource availability as spatial layers
-   -  carrying capacity mapped across cells or landscape units
-   -  movement, dispersal and local density dynamics
+Later portfolio phases, deliberately out of scope here: richer age/sex
+structure, predation, and spatial or habitat-based modelling.
 
 ## Getting started
 
 1. Create and activate a Python virtual environment.
 2. Install requirements:
    ```bash
-   pip install -r requirements.txt
+   make install
    ```
 3. Run the model:
    ```bash
-  ./src/growth_model.py --species_name Wildebeest --start_year 1965 --forecast_horizon 6
+   ./src/growth_model.py --species_name Wildebeest --start_year 1965 --forecast_horizon 6
    ```
-
-  Evaluate the full 1965-1997 backtest:
-  ```bash
-  make evaluate-model
-  ```
+4. Evaluate the full 1965-1997 backtest:
+   ```bash
+   make evaluate-model
+   ```
+5. Run the tests, lint and formatting check:
+   ```bash
+   make test lint format-check
+   ```
 
 `--start_year` must exist in the counts dataset for the chosen species, since the projection is initialised from observed values.
 
-Example output:
+Example output (current model, illustrating the overshoot described above):
 
 ```text
 Projection for Wildebeest from 1965:
   1965: adults=6518 juveniles=6518 total=13035
+  1966: adults=8747 juveniles=8415 total=17162
   ...
+  1971: adults=30124 juveniles=36709 total=66834
 
 Validation against observed counts:
-  2020: projected=1586 observed=1180 error=+406 (+34.4%)
-  2022: projected=2112 observed=1330 error=+782 (+58.8%)
+  1965: projected=13035 observed=13035 error=+0 (+0.0%)
+  1969: projected=39456 observed=16072 error=+23384 (+145.5%)
+  1970: projected=51570 observed=13950 error=+37620 (+269.7%)
+  1971: projected=66834 observed=12557 error=+54277 (+432.2%)
 ```
 
 ## Notes
 
-- This repository is a lightweight prototype and should be extended before use in production analysis.
-- Placeholder figures are illustrative only and are not sourced from real survey data.
+- This repository is a research prototype and should be extended before use in production analysis.
+- Data provenance for every committed file is recorded in [`data/README.md`](data/README.md).
