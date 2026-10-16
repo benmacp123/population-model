@@ -18,6 +18,9 @@ evaluate-model:
 plot-backtest:
 	python scripts/plot_backtest.py
 
+holdout-ceiling:
+	PYTHONPATH=src python scripts/holdout_ceiling.py
+
 results: evaluate-model plot-backtest
 
 

@@ -64,18 +64,27 @@ Fitted parameters (central scenario):
 
 What the results show:
 
-1. **The model fits the past but cannot forecast it.** A single-equilibrium
-   model settles towards capacity. The census instead rose sharply in the
-   early 1980s and then fell 38-81% from peak by 1995. Published Kruger work
-   links these declines to rainfall and the 1991-92 drought (for example
-   Ogutu & Owen-Smith 2003, *Ecology Letters* 6: 412-419).
-2. **The scenario range is too narrow.** Near-best parameter sets agree with
+1. **The model fits the past but cannot forecast it.** Fitted on 1965-1979,
+   it settles towards capacity. The census instead rose sharply in the early
+   1980s and then fell 38-81% from peak by 1995.
+2. **The dynamics changed between periods.** As a diagnostic, fitting the
+   same three parameters directly on 1980-1997 (`make holdout-ceiling`)
+   beats persistence comfortably (skill 0.86 wildebeest, 0.31 waterbuck,
+   0.42 kudu): the stage structure can overshoot capacity and fall back,
+   following the 1980s rise and a gentle decline. But those parameters miss
+   1965-1979 by 33-73%, and none reproduce the steep 1991-95 crash. No
+   single parameter set describes both periods, which points to a changing
+   external driver rather than only a wrong model form. Published Kruger
+   work links these declines to rainfall and the 1991-92 drought (for
+   example Ogutu & Owen-Smith 2003, *Ecology Letters* 6: 412-419). These
+   diagnostic numbers are not forecast scores.
+3. **The scenario range is too narrow.** Near-best parameter sets agree with
    each other, so the band almost never contains the observed counts. The
    uncertainty that matters here is structural, not parametric.
-3. **Two species fit on a search bound.** Kudu needs the lowest birth rate
+4. **Two species fit on a search bound.** Kudu needs the lowest birth rate
    and highest capacity allowed, and wildebeest the lowest capacity. Widening
    the bounds would fit calibration better without fixing the holdout.
-4. **The restart split shows.** Restarting in 1979 re-seeds a 50/50
+5. **The restart split shows.** Restarting in 1979 re-seeds a 50/50
    adult/juvenile split, which produces the sharp first-year kudu drop.
 
 ## Data structure
