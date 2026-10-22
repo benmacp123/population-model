@@ -101,3 +101,37 @@ by `scripts/parse_counts.py`. It keeps rows whose reported total is missing
 so those gaps remain visible for review; blank totals are not treated as
 zero. The parser adds the DataONE record, object identifier, source URL, and
 survey method to every row. It does not create adult or juvenile counts.
+
+## Regional counts (version 2)
+
+`raw/regional_counts.csv` is a long table of the regional columns (South,
+Central, North, FarNorth) of the same SANParks file, written by
+`scripts/parse_counts.py`: one row per species, year and region with a
+reported count, so missing cells stay missing. `era` separates 1965-1976
+(aerial totals corrected by ground counts) from 1977-1997 (Ecological
+Aerial Survey). `total_status` records how the published park `TOTAL`
+relates to the regional counts that year: equal, including an estimate for
+unsurveyed regions, differing even with all four regions present (a source
+inconsistency, 16 species-years), or no total. Buffalo has no regional
+counts. Region boundaries are assumed constant across 1965-1997.
+
+## Rainfall (version 2)
+
+`raw/kruger_rainfall_cru.csv` is derived from CRU TS 4.10 monthly
+precipitation (Harris, Osborn, Jones & Lister 2020, *Scientific Data* 7:
+109, <https://doi.org/10.1038/s41597-020-0453-3>), downloaded from
+<https://crudata.uea.ac.uk/cru/data/hrg/cru_ts_4.10/>. CRU TS is released
+under the Open Database License (ODbL 1.0) with contents under the
+Database Contents License; this derived table is therefore also made
+available under the ODbL, separately from the repository's code licence.
+
+`scripts/fetch_rainfall.py` (`make fetch-rainfall`, needs network access)
+averages the 14 half-degree cells centred at 22.25-25.25 S and 31.25-31.75
+E, an approximation of the park outline, and sums months into seasonal
+years: seasonal year `y` runs from October `y - 1` to September `y`, with
+the dry season April-September of `y`. `min_station_count` is the fewest
+stations contributing to any cell-month that year (CRU reverts to
+climatology at zero); it is 7 or 8 throughout. The table reproduces known
+features without adjustment: mean 513 mm a year, and the 1991/92 and
+1982/83 droughts are the two driest seasonal years. Gridded rainfall is a
+literature-sourced input, not a Kruger station record.

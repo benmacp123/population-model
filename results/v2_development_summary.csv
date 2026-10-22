@@ -1,0 +1,13 @@
+species,model,n,mean_crps,mae,coverage_80,coverage_95,crps_skill_vs_random_walk
+Kudu,calibration_mean,62,0.343,0.458,0.694,0.823,-1.215
+Kudu,no_rain,62,0.168,0.229,0.645,0.823,-0.089
+Kudu,rain,62,0.167,0.226,0.661,0.806,-0.081
+Kudu,random_walk,62,0.155,0.19,0.968,0.984,0.0
+Waterbuck,calibration_mean,62,0.276,0.377,0.694,0.839,-0.612
+Waterbuck,no_rain,62,0.193,0.261,0.758,0.871,-0.123
+Waterbuck,rain,62,0.171,0.237,0.758,0.887,0.002
+Waterbuck,random_walk,62,0.172,0.226,0.871,0.952,0.0
+Wildebeest,calibration_mean,62,0.292,0.418,0.581,0.919,-1.395
+Wildebeest,no_rain,62,0.125,0.164,0.758,0.855,-0.027
+Wildebeest,rain,62,0.122,0.159,0.774,0.855,0.002
+Wildebeest,random_walk,62,0.122,0.161,0.823,0.903,0.0

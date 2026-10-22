@@ -1,5 +1,5 @@
-.PHONY: install setup build-traits parse-counts evaluate-model plot-backtest \
-	holdout-ceiling results test format format-check lint all
+.PHONY: install setup build-traits fetch-rainfall parse-counts evaluate-model plot-backtest \
+	holdout-ceiling results results-v2 test format format-check lint all
 
 install:
 	python -m pip install --upgrade pip &&\
@@ -11,6 +11,9 @@ setup: install
 
 build-traits:
 	python scripts/build_traits.py
+
+fetch-rainfall:
+	python scripts/fetch_rainfall.py
 
 parse-counts:
 	python scripts/parse_counts.py
@@ -26,9 +29,13 @@ holdout-ceiling:
 
 results: evaluate-model plot-backtest
 
+# Development species only; the confirmation run is a one-off (see PLAN.md).
+results-v2:
+	PYTHONPATH=src python scripts/evaluate_state_space.py
+
 
 test:
-	PYTHONPATH=src python -m pytest -vv --cov=growth_model --cov=calibration tests/*
+	PYTHONPATH=src:scripts python -m pytest -vv --cov=growth_model --cov=calibration --cov=state_space tests/*
 
 
 format:
@@ -41,7 +48,7 @@ format-check:
 # Docstring checks (C0114-C0116) stay on; W0621 is pytest's fixture pattern.
 lint:
 	PYTHONPATH=src python -m pylint --disable=R,C --enable=C0114,C0115,C0116 src/*.py scripts/*.py
-	PYTHONPATH=src python -m pylint --disable=R,C,W0621 --enable=C0114,C0115,C0116 tests/*.py
+	PYTHONPATH=src:scripts python -m pylint --disable=R,C,W0621 --enable=C0114,C0115,C0116 tests/*.py
 
 
 all: install format lint test
