@@ -178,7 +178,7 @@ confirm that the committed files are the ones that produced the results.
 | 1 | Calibration 1965-1979, holdout 1980-1995, persistence and calibration-mean baselines (not formally pre-registered) | [`4fa1cf2`](https://github.com/benmacp123/population-model/commit/4fa1cf2) | No holdout skill; one later change made after seeing the holdout is documented below |
 | 2 | Model, rainfall covariate, rolling origins, CRPS and coverage criteria, eight confirmation species never examined in development | [`81b5e22`](https://github.com/benmacp123/population-model/commit/81b5e22) (`src/state_space.py` SHA-256 `5820f0eb…`) | None of three criteria met |
 | 3 sweep | Operating model, design grid, scenarios, metrics and the calibration rule | [`4e523f4`](https://github.com/benmacp123/population-model/commit/4e523f4) (`src/monitoring.py` `2f047c8b…`, `scripts/survey_design.py` `1ddbf97f…`) | Calibrated only when the model is true |
-| 3 replay | Alpha rule, its fallback and the raw-count rule | The commit adding `scripts/replay.py` (`010bdf68…`) | Descriptive; see above |
+| 3 replay | Alpha rule, its fallback and the raw-count rule | [`96f1fd5`](https://github.com/benmacp123/population-model/commit/96f1fd5) (`scripts/replay.py` `010bdf68…` before the docstring rewording below) | Descriptive; see above |
 
 The version 2 scoring script in `81b5e22` includes one fix made after the
 confirmation run: its CRPS returned NaN for zero-width forecasts, which
@@ -190,7 +190,7 @@ Since those runs, docstrings in `src/monitoring.py`,
 `scripts/replay.py` have been reworded to remove references to a planning
 file that is not published. No code changed: for the first three, `git diff`
 against the commits above shows docstring lines only. `scripts/replay.py`
-was first committed after the rewording, so the hash recorded before its run
+was first committed (in `96f1fd5`) after the rewording, so the hash recorded before its run
 (`010bdf68…`) applies to the file with its two original docstring lines
 restored.
 
