@@ -29,12 +29,14 @@ holdout-ceiling:
 
 results: evaluate-model plot-backtest
 
-# Development species only; the confirmation run is a one-off (see PLAN.md).
+# Development species only; the confirmation run is a one-off (see README).
 results-v2:
 	PYTHONPATH=src python scripts/evaluate_state_space.py
 
 results-v3:
 	PYTHONPATH=src python scripts/survey_design.py
+	python scripts/plot_survey_design.py
+	PYTHONPATH=src python scripts/replay.py
 
 
 test:

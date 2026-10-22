@@ -4,8 +4,8 @@
 For each rare-antelope species, fit the no-rain version 2 model to the
 baseline window, then simulate surveys under every combination of
 pre-registered design and scenario, filter them and score a threshold
-alert on the core-region index. The design is pre-registered in PLAN.md;
-nothing here scores against real counts.
+alert on the core-region index. The design was fixed before the run (see
+the README); nothing here scores against real counts.
 """
 
 from itertools import product

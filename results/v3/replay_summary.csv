@@ -1,0 +1,7 @@
+species,role,core_regions,total_variance,alpha,alpha_rule_met,first_filter_alert,first_raw_alert,filter_alert_years,raw_alert_years,raw_index_years
+Roan,target,FarNorth North,0.3055,0.5,True,1992,1988,5,9,11
+Sable,target,Central FarNorth North South,0.017,0.1,True,1993,1993,5,1,8
+Tsessebe,target,Central FarNorth North,0.1719,0.5,False,1992,1992,5,4,10
+Giraffe,control,Central FarNorth North South,0.02,0.1,True,,,0,0,8
+Impala,control,Central FarNorth North South,0.0785,0.1,True,,,0,0,8
+Zebra,control,Central FarNorth North South,0.0164,0.1,True,,,0,0,8

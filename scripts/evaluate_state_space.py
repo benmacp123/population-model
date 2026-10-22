@@ -10,7 +10,7 @@ observed in it. Four forecasters are compared on the log scale:
 - ``random_walk``: last observed log count, sd from past one-year changes
 - ``calibration_mean``: each region's mean log count up to the origin
 
-The design is pre-registered in PLAN.md. Development species are used to
+The design was fixed before scoring (see the README). Development species are used to
 build the pipeline; the confirmation species are run once, with
 ``--confirmation``, after the pipeline is frozen.
 """

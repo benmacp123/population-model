@@ -5,7 +5,7 @@ filter works, not whether counts can be forecast. This module simulates
 regional log counts from a no-rain ``Params`` operating model, thins them
 to a survey interval, filters every simulated path at once and turns the
 filtered state into the probability that a core-region index has fallen
-below a threshold. The design is pre-registered in PLAN.md.
+below a threshold. The pre-registered design is summarised in the README.
 
 The vectorised filter repeats the update equations of
 ``state_space.kalman_filter`` for the no-rain model (``c = 0``) and keeps
