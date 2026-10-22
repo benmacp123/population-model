@@ -500,11 +500,14 @@ SANParks series, and still did not beat the random walk.
 
 ## Getting started
 
-1. Create and activate a Python 3.12+ virtual environment.
-2. Install requirements:
+1. Install [uv](https://docs.astral.sh/uv/), then create the environment
+   in `venv/` (uv fetches Python 3.14 if needed) and activate it:
    ```bash
    make install
+   source venv/bin/activate
    ```
+   Without uv, `pip install -r requirements.txt` into a Python 3.14
+   virtual environment installs the same versions.
 3. Reproduce the results:
    ```bash
    make results-v3   # version 3 design sweep, figure and replay
@@ -525,7 +528,7 @@ SANParks series, and still did not beat the random walk.
 
 - This repository is a research prototype, not a management tool.
 - Data provenance for every committed file is recorded in [`data/README.md`](data/README.md).
-- Dependencies are pinned in `requirements.txt` so CI and local runs use the same tools.
+- Dependencies are pinned once in `pyproject.toml` and the full tree is locked in `uv.lock`, so CI and local runs use the same versions; `requirements.txt` is exported from the lock (`make requirements`).
 
 ## Licence
 

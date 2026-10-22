@@ -7,13 +7,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v5
+    # uv installs the Python in .python-version (3.14, as the results used).
+    - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
       with:
-        python-version: "3.12"
+        version: "0.12.3"
+    - name: Check uv.lock matches pyproject.toml
+      run: uv lock --check
+    - name: Check requirements.txt matches uv.lock
+      run: |
+        make requirements
+        git diff --exit-code requirements.txt
     - name: Install Dependencies
       run: |
         make install
+        echo "$PWD/venv/bin" >> "$GITHUB_PATH"
     - name: Lint with Pylint
       run: |
         make lint

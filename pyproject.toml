@@ -1,0 +1,37 @@
+# Dependencies, each pinned once; uv.lock pins the full tree. Not an
+# installable package: the Makefile runs the code with PYTHONPATH=src.
+[project]
+name = "population-model"
+version = "0.1.0"
+description = "Population models and decline-alert reliability for Kruger National Park herbivores"
+readme = "README.md"
+license = "MIT"
+# The committed results were produced on 3.14; local runs and CI use the
+# same minor.
+requires-python = "==3.14.*"
+dependencies = []
+
+[dependency-groups]
+# What the models, evaluation scripts and figures import.
+analysis = [
+    "click==8.4.2",
+    "numpy==2.5.2",
+    "scipy==1.18.1",
+    "pandas==3.0.5",
+    "matplotlib==3.11.2",
+]
+dev = [
+    { include-group = "analysis" },
+    "pytest==9.1.1",
+    "pytest-cov==7.1.0",
+    "pylint==4.0.7",
+    "black==26.5.1",
+    "ipython==9.16.1",
+    # The kernel for notebooks/explore_traits.ipynb.
+    "ipykernel==7.3.0",
+]
+
+[tool.uv]
+package = false
+default-groups = ["dev"]
+required-version = ">=0.12.3"

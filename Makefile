@@ -1,12 +1,29 @@
 .PHONY: install setup build-traits fetch-rainfall parse-counts evaluate-model plot-backtest \
-	holdout-ceiling results results-v2 results-v3 test format format-check lint all
+	holdout-ceiling results results-v2 results-v3 lock requirements test format format-check \
+	lint all
 
+
+# uv manages the venv at venv/ (the portfolio's convention) rather than
+# .venv; activate it before the other targets.
+export UV_PROJECT_ENVIRONMENT = venv
+
+# Sync venv/ to uv.lock exactly (all groups).
 install:
-	python -m pip install --upgrade pip &&\
-		python -m pip install -r requirements.txt
+	uv sync --frozen
 
 
 setup: install
+
+
+# Re-resolve uv.lock after editing pyproject.toml, then refresh the pip export.
+lock:
+	uv lock
+	$(MAKE) requirements
+
+
+# requirements.txt is generated for pip users; edit pyproject.toml instead.
+requirements:
+	uv export --frozen --no-emit-project --no-hashes --output-file requirements.txt > /dev/null
 
 
 build-traits:
