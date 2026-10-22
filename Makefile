@@ -1,5 +1,5 @@
 .PHONY: install setup build-traits fetch-rainfall parse-counts evaluate-model plot-backtest \
-	holdout-ceiling results results-v2 test format format-check lint all
+	holdout-ceiling results results-v2 results-v3 test format format-check lint all
 
 install:
 	python -m pip install --upgrade pip &&\
@@ -33,9 +33,12 @@ results: evaluate-model plot-backtest
 results-v2:
 	PYTHONPATH=src python scripts/evaluate_state_space.py
 
+results-v3:
+	PYTHONPATH=src python scripts/survey_design.py
+
 
 test:
-	PYTHONPATH=src:scripts python -m pytest -vv --cov=growth_model --cov=calibration --cov=state_space tests/*
+	PYTHONPATH=src:scripts python -m pytest -vv --cov=growth_model --cov=calibration --cov=state_space --cov=monitoring tests/*
 
 
 format:

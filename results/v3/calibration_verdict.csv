@@ -1,0 +1,13 @@
+species,threshold,group,gap,calibrated
+Roan,0.5,misspecified,0.092,False
+Roan,0.5,model_true,0.0461,True
+Roan,0.7,misspecified,0.0645,False
+Roan,0.7,model_true,0.0403,True
+Sable,0.5,misspecified,0.7342,False
+Sable,0.5,model_true,0.05,True
+Sable,0.7,misspecified,0.4261,False
+Sable,0.7,model_true,0.0487,True
+Tsessebe,0.5,misspecified,0.4516,False
+Tsessebe,0.5,model_true,0.0498,True
+Tsessebe,0.7,misspecified,0.237,False
+Tsessebe,0.7,model_true,0.0438,True
