@@ -43,11 +43,13 @@ def traits():
 
 @pytest.fixture
 def traits_df(traits):
+    """Trait table holding the single test species."""
     return pd.DataFrame([traits])
 
 
 @pytest.fixture
 def counts_df():
+    """Two observed years for the test species with explicit stages."""
     return pd.DataFrame(
         [
             {
@@ -72,6 +74,7 @@ def counts_df():
 
 
 def test_adult_pop_change():
+    """Adult change is maturation minus adult deaths."""
     assert (
         adult_pop_change(adult_pop=100, matured_juveniles=10, adult_death_rate=0.05)
         == 10 - 5
@@ -79,6 +82,7 @@ def test_adult_pop_change():
 
 
 def test_juv_pop_change():
+    """Juvenile change is births minus deaths minus maturation."""
     assert (
         juv_pop_change(
             juvenile_pop=50, births=20, juv_death_rate=0.1, matured_juveniles=5
@@ -95,11 +99,13 @@ def test_juv_pop_change():
 def test_carrying_capacity_uses_explicit_value_when_supplied(
     traits, traits_df, counts_df
 ):
+    """An explicit capacity in the traits overrides the biomass proxy."""
     traits["carrying_capacity"] = 1234.0
     assert calc_carrying_capacity(traits, traits_df, counts_df, 2018) == 1234.0
 
 
 def test_carrying_capacity_falls_back_to_biomass_proxy(traits, traits_df, counts_df):
+    """Without an explicit value, capacity comes from the biomass proxy."""
     # Single species at equal weight: proxy reduces to that year's total count.
     capacity = calc_carrying_capacity(traits, traits_df, counts_df, 2018)
     assert capacity == pytest.approx(150.0)
@@ -108,10 +114,12 @@ def test_carrying_capacity_falls_back_to_biomass_proxy(traits, traits_df, counts
 def test_carrying_capacity_returns_zero_for_unobserved_year(
     traits, traits_df, counts_df
 ):
+    """The proxy returns zero when the year has no counts."""
     assert calc_carrying_capacity(traits, traits_df, counts_df, 1999) == 0.0
 
 
 def test_calibration_peak_capacity_ignores_holdout_years():
+    """The capacity base uses only calibration-period counts."""
     counts = pd.DataFrame(
         {
             "name": ["TestBuck"] * 4,
@@ -123,6 +131,7 @@ def test_calibration_peak_capacity_ignores_holdout_years():
 
 
 def test_calibration_peak_capacity_rejects_empty_period():
+    """A calibration period with no counts is an error."""
     counts = pd.DataFrame({"name": ["TestBuck"], "year": [1980], "total_pop": [500.0]})
     with pytest.raises(ValueError):
         calibration_peak_capacity(counts, "TestBuck", 1979)
@@ -134,17 +143,20 @@ def test_calibration_peak_capacity_rejects_empty_period():
 
 
 def test_birth_rate_uses_interbirth_interval_when_available(traits):
+    """Birth rate comes from the interbirth interval when it is known."""
     with_interval = dict(traits, interbirth_interval_days=730.5)
     assert annual_birth_rate(with_interval) == pytest.approx(0.5)
 
 
 def test_birth_rate_falls_back_to_gestation(traits):
+    """A missing or NaN interval falls back to gestation length."""
     for interval in (None, float("nan")):
         record = dict(traits, interbirth_interval_days=interval)
         assert annual_birth_rate(record) == pytest.approx(1.0)
 
 
 def test_population_change_returns_all_three_totals(traits):
+    """A step returns adult, juvenile and a consistent total."""
     result = population_change(traits, adult_pop=100.0, juvenile_pop=50.0)
     assert set(result) == {"adult_pop", "juvenile_pop", "total_pop"}
     assert result["total_pop"] == pytest.approx(
@@ -163,6 +175,7 @@ def test_juvenile_mortality_defaults_to_adult_rate(traits):
 
 
 def test_higher_juvenile_mortality_reduces_juveniles(traits):
+    """Raising juvenile mortality lowers next year's juveniles."""
     low = population_change(
         dict(traits, juv_death_rate=0.1), adult_pop=100.0, juvenile_pop=50.0
     )
@@ -183,6 +196,7 @@ def test_density_dependence_halts_maturation_at_capacity(traits):
 
 
 def test_below_capacity_allows_maturation(traits):
+    """Room below capacity lets more juveniles mature."""
     constrained = population_change(
         traits, adult_pop=100.0, juvenile_pop=50.0, carrying_capacity=150.0
     )
@@ -193,6 +207,7 @@ def test_below_capacity_allows_maturation(traits):
 
 
 def test_populations_are_floored_at_zero(traits):
+    """Extreme mortality cannot produce negative populations."""
     doomed = dict(traits, life_span_years=0.5, juv_death_rate=5.0)
     result = population_change(doomed, adult_pop=10.0, juvenile_pop=10.0)
     assert result["adult_pop"] >= 0.0
@@ -200,6 +215,7 @@ def test_populations_are_floored_at_zero(traits):
 
 
 def test_load_species_traits_reads_normalized_csv(tmp_path):
+    """The traits loader reads the normalised CSV."""
     path = tmp_path / "traits.csv"
     pd.DataFrame([{"name": "TestBuck", "avg_weight_kg": 100.0}]).to_csv(
         path, index=False
@@ -211,6 +227,7 @@ def test_load_species_traits_reads_normalized_csv(tmp_path):
 
 
 def test_load_species_counts_seeds_stages_from_total(tmp_path):
+    """Loaded totals are split by the juvenile fraction."""
     path = tmp_path / "counts.csv"
     pd.DataFrame([{"name": "TestBuck", "year": 1965, "total_pop": 100.0}]).to_csv(
         path, index=False
@@ -223,6 +240,7 @@ def test_load_species_counts_seeds_stages_from_total(tmp_path):
 
 
 def test_load_species_counts_rejects_invalid_juvenile_fraction(tmp_path):
+    """A juvenile fraction outside 0-1 is rejected."""
     path = tmp_path / "counts.csv"
     pd.DataFrame([{"name": "TestBuck", "year": 1965, "total_pop": 100.0}]).to_csv(
         path, index=False
@@ -233,6 +251,7 @@ def test_load_species_counts_rejects_invalid_juvenile_fraction(tmp_path):
 
 
 def test_population_change_rejects_missing_required_traits(traits):
+    """A step with a missing required trait raises a clear error."""
     incomplete = dict(traits, male_ratio=None)
 
     with pytest.raises(ValueError, match="male_ratio"):
@@ -245,6 +264,7 @@ def test_population_change_rejects_missing_required_traits(traits):
 
 
 def test_forecast_starts_from_observed_values(traits_df, counts_df):
+    """A forecast is initialised from the observed start-year stages."""
     forecast = forecast_population(traits_df, counts_df, "TestBuck", 2018, 3)
     first = forecast.iloc[0]
     assert first["year"] == 2018
@@ -253,17 +273,20 @@ def test_forecast_starts_from_observed_values(traits_df, counts_df):
 
 
 def test_forecast_returns_horizon_plus_start_year(traits_df, counts_df):
+    """A forecast has one row per year including the start year."""
     forecast = forecast_population(traits_df, counts_df, "TestBuck", 2018, 3)
     assert len(forecast) == 4
     assert list(forecast["year"]) == [2018, 2019, 2020, 2021]
 
 
 def test_forecast_rejects_unknown_species(traits_df, counts_df):
+    """Forecasting a species with no traits is an error."""
     with pytest.raises(ValueError, match="No traits found"):
         forecast_population(traits_df, counts_df, "Griffin", 2018, 3)
 
 
 def test_forecast_rejects_start_year_without_observation(traits_df, counts_df):
+    """Forecasting from an unobserved start year is an error."""
     with pytest.raises(ValueError, match="No observed count"):
         forecast_population(traits_df, counts_df, "TestBuck", 1999, 3)
 
@@ -283,6 +306,7 @@ def test_comparison_is_exact_in_the_start_year(traits_df, counts_df):
 
 
 def test_comparison_only_covers_overlapping_years(traits_df, counts_df):
+    """Validation compares only years that are both projected and observed."""
     forecast = forecast_population(traits_df, counts_df, "TestBuck", 2018, 3)
     comparison = compare_to_counts(forecast, counts_df, "TestBuck")
     # 2019 and 2021 are projected but never observed.
@@ -290,6 +314,7 @@ def test_comparison_only_covers_overlapping_years(traits_df, counts_df):
 
 
 def test_comparison_error_columns_are_consistent(traits_df, counts_df):
+    """Absolute and percentage errors agree with the totals."""
     forecast = forecast_population(traits_df, counts_df, "TestBuck", 2018, 3)
     comparison = compare_to_counts(forecast, counts_df, "TestBuck")
     for _, row in comparison.iterrows():
@@ -302,6 +327,7 @@ def test_comparison_error_columns_are_consistent(traits_df, counts_df):
 
 
 def test_comparison_is_empty_without_overlap(traits_df, counts_df):
+    """No overlapping years gives an empty comparison."""
     forecast = forecast_population(traits_df, counts_df, "TestBuck", 2018, 0)
     unrelated = counts_df.assign(year=counts_df["year"] + 100)
     assert compare_to_counts(forecast, unrelated, "TestBuck").empty
@@ -334,6 +360,7 @@ def test_placeholder_species_appear_in_both_tables():
 
 
 def test_placeholder_counts_total_is_consistent():
+    """Committed counts satisfy total = adult + juvenile."""
     counts = get_species_counts()
     complete = counts.dropna(subset=["total_pop"])
     assert (
@@ -342,6 +369,7 @@ def test_placeholder_counts_total_is_consistent():
 
 
 def test_run_growth_model_prints_projection_and_validation(capfd):
+    """The CLI prints a projection and a validation table."""
     run_growth_model("Wildebeest", start_year=1965, forecast_horizon=6)
     out = capfd.readouterr().out
     assert "Projection for Wildebeest from 1965:" in out
@@ -355,6 +383,7 @@ def test_run_growth_model_prints_projection_and_validation(capfd):
 
 
 def test_backtest_metrics_scores_level_trend_and_baseline():
+    """Backtest metrics score level, trend and skill correctly."""
     comparison = pd.DataFrame(
         {
             "observed_total": [100.0, 120.0, 90.0],
@@ -374,6 +403,7 @@ def test_backtest_metrics_scores_level_trend_and_baseline():
 
 
 def test_backtest_metrics_flags_opposite_trend():
+    """Opposite projected and observed trends are flagged."""
     comparison = pd.DataFrame(
         {"observed_total": [100.0, 80.0], "projected_total": [100.0, 120.0]}
     )

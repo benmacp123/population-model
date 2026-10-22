@@ -47,7 +47,23 @@ Park summarized by year and region 1965-1997* (SANParks, 2007). The raw
 object has MD5 checksum `48938704ad3613b903e6093b9c69a6fa`.
 
 The file is tabular text with year, species, regional counts, and a `TOTAL`
-column. The normalized extract includes all census species so their body
+column. The record's rights statement reads: "This data compilation was
+prepared for the paper by Owen-Smith and Mills (Ecological Monographs
+76:73-92, 2006). It is freely accessible for use for any scientific
+purpose." It does not explicitly address redistribution; committing the
+file in a public, non-commercial repository with this citation is assumed
+to fall within it, but SANParks has not confirmed that.
+
+The record's abstract describes 1965-1976 totals as "aerial count totals
+corrected on the basis of differential ground counts" and 1977-1997 as
+Ecological Aerial Survey totals, so the series already crosses one method
+change before the 1998 break. In 1970, 1978, 1979, 1994 and 1995 the
+`TOTAL` exceeds the sum of the regional columns by a round number, meaning
+unsurveyed regions were estimated; in 1979 this is 16-28% of the total for
+the active species. The parser takes `TOTAL` as published and does not
+adjust it.
+
+The normalized extract includes all census species so their body
 masses can contribute to the community biomass proxy. The
 downloaded file is retained unchanged as provenance evidence and is
 normalized into the model's counts schema by `scripts/parse_counts.py`
@@ -56,9 +72,11 @@ years with incomplete coverage must not automatically be interpreted as
 zero. The total-count series must remain limited to 1965-1997 because the
 survey methodology changed in 1998.
 
-There is intentionally no automated counts builder. Once the raw data has
-been reviewed and normalized, each model count row should retain a source
-citation and survey-method field. Census totals do not contain an
+Counts are not hand-transcribed: `scripts/parse_counts.py` parses them
+from the checksummed DataONE file above. Each count row retains a source
+citation and survey-method field; the survey method is currently stamped
+as a constant rather than read from the source, so it does not reflect the
+1976/77 method change. Census totals do not contain an
 adult/juvenile split, so that split must be seeded separately from a
 documented stable-stage assumption.
 
@@ -69,8 +87,10 @@ sensitivity-tested when a literature-based stage proportion is selected.
 
 `scripts/evaluate_model.py` calibrates juvenile mortality, a birth
 multiplier and a capacity multiplier on 1965-1979 only, restarts the
-forecast from the last 1965-1979 reported total, and scores the 1980-1997
-reported totals against a persistence baseline. The search bounds are a
+forecast from the last 1965-1979 reported total (split into stages using
+each parameter set's own carried stage share, not the seed split), and
+scores the reported 1980-1995 totals against persistence and
+calibration-mean baselines. The search bounds are a
 defensible range, not literature-sourced rates. Results are written to
 `results/backtest_summary.csv` and `results/backtest_projections.csv`;
 `scripts/plot_backtest.py` draws `results/backtest.png` from them. These

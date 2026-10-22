@@ -14,7 +14,7 @@ of the best fit form the low/central/high scenario envelope.
 """
 
 import itertools
-from typing import Dict, Sequence
+from typing import Dict, Optional, Sequence
 
 import numpy as np
 import pandas as pd
@@ -40,6 +40,53 @@ def _start_stages(counts_df: pd.DataFrame, species_name: str, year: int):
     if row.empty or pd.isna(row.iloc[0]["total_pop"]):
         raise ValueError(f"No reported total for '{species_name}' in {year}.")
     return float(row.iloc[0]["adult_pop"]), float(row.iloc[0]["juvenile_pop"])
+
+
+def _carried_stages(
+    traits: Dict,
+    params: Dict[str, float],
+    counts_df: pd.DataFrame,
+    species_name: str,
+    capacity_base: float,
+    stage_start_year: int,
+    anchor_year: int,
+):
+    """Split the observed anchor total using the model's own stage share.
+
+    The parameter set is run from the seeded ``stage_start_year`` stages to
+    ``anchor_year``, and its juvenile share in that year is applied to the
+    observed anchor total. The forecast then restarts from the reported
+    total without re-imposing the provisional seed split, which would
+    otherwise cause an artificial first-year jump.
+
+    Args:
+        traits: Trait record for the species.
+        params: One parameter set.
+        counts_df: Observed counts with seeded stages.
+        species_name: Species being forecast.
+        capacity_base: Capacity in individuals before the multiplier.
+        stage_start_year: Reported year the stage-carrying run starts from.
+        anchor_year: Reported year the forecast restarts from.
+
+    Returns:
+        ``(adult, juvenile)`` counts summing to the observed anchor total.
+    """
+    adult, juvenile = _start_stages(counts_df, species_name, anchor_year)
+    record = dict(
+        traits,
+        juv_death_rate=params["juv_death_rate"],
+        birth_multiplier=params["birth_multiplier"],
+    )
+    run = project_population(
+        record,
+        *_start_stages(counts_df, species_name, stage_start_year),
+        capacity_base * params["capacity_multiplier"],
+        stage_start_year,
+        anchor_year - stage_start_year,
+    ).iloc[-1]
+    juvenile_share = run["juvenile_pop"] / run["total_pop"]
+    total = adult + juvenile
+    return total * (1.0 - juvenile_share), total * juvenile_share
 
 
 def _project_totals(
@@ -129,6 +176,7 @@ def holdout_forecast(
     anchor_year: int,
     end_year: int,
     calibration_end: int,
+    stage_start_year: Optional[int] = None,
 ) -> pd.DataFrame:
     """Forecast the holdout period from the last calibration observation.
 
@@ -143,26 +191,34 @@ def holdout_forecast(
         anchor_year: Reported year the forecast restarts from.
         end_year: Last projected year.
         calibration_end: Last calibration year (sets the capacity base).
+        stage_start_year: If given, split the anchor total using each
+            parameter set's own stage share carried from this year (see
+            ``_carried_stages``); otherwise use the seeded split.
 
     Returns:
         Year-indexed ``central``, ``low`` and ``high`` projected totals.
     """
-    stages = _start_stages(counts_df, species_name, anchor_year)
+    seeded = _start_stages(counts_df, species_name, anchor_year)
     capacity_base = calibration_peak_capacity(counts_df, species_name, calibration_end)
     param_names = [name for name in fits.columns if name != "calibration_mae"]
-    runs = pd.DataFrame(
-        {
-            i: _project_totals(
+    runs = {}
+    for i, row in fits.iterrows():
+        params = row[param_names].to_dict()
+        stages = seeded
+        if stage_start_year is not None and stage_start_year != anchor_year:
+            stages = _carried_stages(
                 traits,
-                row[param_names].to_dict(),
-                stages,
+                params,
+                counts_df,
+                species_name,
                 capacity_base,
+                stage_start_year,
                 anchor_year,
-                end_year,
             )
-            for i, row in fits.iterrows()
-        }
-    )
+        runs[i] = _project_totals(
+            traits, params, stages, capacity_base, anchor_year, end_year
+        )
+    runs = pd.DataFrame(runs)
     return pd.DataFrame(
         {
             "central": runs.iloc[:, 0],

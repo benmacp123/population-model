@@ -6,9 +6,12 @@ For each active species:
 1. Fit juvenile mortality, a birth multiplier and a capacity multiplier on
    ``start-year`` to ``calibration-end`` with a bounded grid search.
 2. Restart the forecast from the last reported total in the calibration
-   period and project to ``end-year``.
-3. Score the holdout years against a naive persistence baseline that carries
-   that same anchor total forward unchanged.
+   period and project to ``end-year``. That total is split into stages using
+   each parameter set's own stage share in the anchor year, not the
+   provisional seed split.
+3. Score the holdout years against two naive baselines: persistence, which
+   carries that same anchor total forward unchanged, and the mean of the
+   reported calibration-period totals.
 
 Results are written to ``results/`` as a compact summary table and a
 year-by-year projections table used by ``scripts/plot_backtest.py``.
@@ -97,6 +100,7 @@ def evaluate_model(
             anchor_year,
             end_year,
             calibration_end,
+            stage_start_year=start_year,
         )
 
         holdout_obs = observed[observed.index > anchor_year]
@@ -112,6 +116,17 @@ def evaluate_model(
         fit_obs = observed[
             (observed.index > start_year) & (observed.index <= calibration_end)
         ]
+        # Uses only calibration-period counts, so it is a fair naive
+        # comparison rather than a fit to the holdout.
+        calibration_mean = float(
+            observed[
+                (observed.index >= start_year) & (observed.index <= calibration_end)
+            ].mean()
+        )
+        mean_mae = float((holdout_obs - calibration_mean).abs().mean())
+        model_mae = float(
+            (holdout["projected_total"] - holdout["observed_total"]).abs().mean()
+        )
         params = {
             "juv_death_rate": best["juv_death_rate"],
             "birth_multiplier": best["birth_multiplier"],
@@ -130,6 +145,8 @@ def evaluate_model(
                 * best["calibration_mae"]
                 / fit_obs.mean(),
                 **backtest_metrics(holdout, anchor_total),
+                "calibration_mean_nmae_pct": 100.0 * mean_mae / holdout_obs.mean(),
+                "skill_vs_calibration_mean": 1.0 - model_mae / mean_mae,
                 "band_coverage": float(within.mean()),
             }
         )
