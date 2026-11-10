@@ -1,8 +1,16 @@
 # Population Model
 [![Python Applications test with GitHub Actions](https://github.com/benmacp123/population-model/actions/workflows/main.yml/badge.svg)](https://github.com/benmacp123/population-model/actions/workflows/main.yml)
 
-Two attempts to forecast Kruger National Park herbivore counts, each scored
-against rules fixed in advance, failed to beat naive baselines. That is the
+**Status: closed.** Versions 1 to 3 are frozen as a record. A review after
+version 3 closed found that its headline findings need a more careful
+reading than they were first given; the corrections are in
+[Reading the version 3 results](#reading-the-version-3-results-added-after-review)
+and are labelled post hoc throughout.
+
+Two attempts to forecast Kruger National Park herbivore counts failed to
+beat naive baselines. The second was scored against criteria fixed in
+advance; the first was scored against baselines chosen before scoring but
+was not formally pre-registered. That is the
 usual result for short, noisy population series: in a comparison of 49
 methods the single best forecast was the most recent observation (Ward et
 al. 2014, *Oikos* 123: 652-661), and in the NEON phenology forecasting
@@ -19,12 +27,123 @@ and speed. Kruger already manages by thresholds of potential concern; the
 park's review of them in river management reported staff doubts that
 sampling was frequent enough to detect trends, and a risk that too many
 flags would overload the process (McLoughlin et al. 2011, *Koedoe* 53(2)).
+The analogy supplies the vocabulary only. A relay setting starts from a
+fault signature and a stated cost of a nuisance trip against a missed
+trip; version 3 defined neither a decision nor a pass mark, so it reports
+operating characteristics and cannot say whether the alert is good enough
+to use.
+
+## How it works
+
+```mermaid
+flowchart TD
+    census[DataONE Kruger census file] --> parse[parse_counts.py]
+    parse --> counts[Park totals and regional counts]
+    pantheria[PanTHERIA traits file] --> traits[build_traits.py]
+    cru[CRU TS rainfall] --> rain[fetch_rainfall.py]
+    traits --> v1[Version 1: growth_model.py and calibration.py]
+    counts --> v1
+    counts --> v2[Version 2: state_space.py Kalman filter]
+    rain --> v2
+    v1 --> r1[evaluate_model.py: holdout scores and figure]
+    v2 --> r2[evaluate_state_space.py: rolling CRPS and coverage]
+    v2 --> v3[Version 3: monitoring.py simulator and alert]
+    v3 --> sweep[survey_design.py: design sweep and figure]
+    v3 --> replay[replay.py: 1986-1997 replay]
+```
+
+Each version reads only committed files in `data/raw/` and writes to
+`results/`. Fetching rainfall is a separate, optional step. Version 3
+imports the version 2 filter unchanged and never fits to the counts it
+replays.
 
 ## Version 3: how reliable is a decline alert?
 
 **Status: design sweep and retrospective replay complete.** `make
 results-v3` reproduces every output in `results/v3/` byte for byte in
-about 25 seconds.
+about 30 seconds on a multi-core machine (about 2 minutes of CPU time).
+
+### Reading the version 3 results (added after review)
+
+Everything in this subsection is post hoc: it was written in November 2026,
+after the results were known, and reruns nothing. Each number can be
+checked against the committed file named beside it. The original text
+below is kept, with pointers back to these notes.
+
+1. **Roan's "false alarms" are alerts without an imposed decline, not
+   alerts while the population was above the threshold.** The metric
+   counts any alert in a stable run as false and never consults the
+   simulated true index (`alert_metrics` in `src/monitoring.py`). Roan's
+   fitted variance is 18 times sable's (`results/v3/operating_models.csv`),
+   so a stable roan population often does sit more than 30% below its
+   baseline for a time, and an alert then is correct about the level. The
+   sweep did not score alerts against the true state, so it cannot say how
+   many of the 56-76% were wrong in that stricter sense. Finding 2 below
+   (the threshold is the problem) stands; the label "false alarm"
+   overstates it.
+2. **The four-year roan lag is a choice of operating point.** The filter's
+   crossing probability for 1988-1992 was 0.12, 0.20, 0.35, 0.48 and 0.92
+   (`replay_years.csv`). At alpha 0.1 it would have fired in 1988, the same
+   year as the raw rule, with 0.30 false alarms per survey; at 0.25, in
+   1990 with 0.13; at the 0.5 the fixed rule selected, in 1992 with 0.04
+   (`replay_alpha.csv`). The raw rule's own false-alarm rate was never
+   computed, so the replay compares two rules at unmatched rates and does
+   not show that filtering is slower.
+3. **"Calibrated only when nothing is happening" says less than it
+   seems.** With the true parameters supplied, a Kalman filter's
+   probabilities are calibrated by construction, so that check can only
+   catch a coding error. Its gaps (0.040-0.049) are measured to bin
+   midpoints; against each bin's mean predicted probability the largest
+   gap in a judged bin is 0.010-0.016 (`calibration.csv`, threshold 0.7,
+   bins with at least 200 cases). At the 50% threshold sable and tsessebe
+   have one judged bin each, so those two passes carry no information. The
+   failure during declines is partly built in: the simulator applies a
+   decline as a level shift outside the model's dynamics, so a filter that
+   expects a return to baseline must understate it.
+4. **"The filter adds nothing" for sable and tsessebe is a statement about
+   speed, and for tsessebe it rests on a boundary fit.** Tsessebe's fitted
+   survey sd of 0.0025 is the optimiser's lower bound, not an estimate.
+   The replay compared only the year of first alert. In the sweep the
+   filter does hold sable's false alarms at 0-4% in 10 years even with a
+   noisy survey (`survey_design.csv`, annual, sd 0.4); the raw rule was
+   never scored on that measure.
+5. **The 30% trigger is not IUCN Criterion A.** Criterion A measures a
+   reduction "over the last 10 years or three generations, whichever is
+   the longer" (IUCN Red List Categories and Criteria, version 3.1, 2001):
+   a change across a moving window. The alert here tests a level against a
+   fixed 1969-1985 baseline. It borrows the magnitude only.
+6. **The noise-split labels do not mean what the design text said.** The
+   sweep set process variance to 25, 50 or 75% of the fitted total and then
+   replaced the survey sd with the grid value, so total variance changes
+   along the precision axis instead of staying fixed. The share of the
+   simulated variance that is process noise is therefore:
+
+   | Species (50% label) | Survey sd 0.1 | 0.2 | 0.4 |
+   |---|---|---|---|
+   | Roan | 94% | 79% | 49% |
+   | Sable | 46% | 18% | 5% |
+   | Tsessebe | 90% | 68% | 35% |
+
+   Computed as `share x T / (share x T + sd^2)` with `T` the fitted total
+   in `operating_models.csv`. For sable at sd 0.4 the simulated series is
+   about ten times as variable as the fitted one (0.169 against 0.017).
+   Roan's fitted survey sd of 0.49 also lies outside the grid's maximum of
+   0.4, so its replay runs outside the simulated design space.
+7. **Results swing widely across the split, and two sensitivities were not
+   reported.** With annual surveys at sd 0.4, sable's missed 5%-a-year
+   declines run 83%, 24% and 9% across the three labels, and tsessebe's
+   false alarms 0%, 17% and 45%. Under the near-random-walk operating
+   model, false alarms at sd 0.1 rise from 2% to 22% for sable and from
+   29% to 51% for tsessebe. When the filter uses the as-fitted split
+   instead of the true one, tsessebe's false alarms at sd 0.4 rise from
+   17% to 53%. All are rows of `survey_design.csv` at alpha 0.25 and the
+   30% threshold. The direction of finding 3 below (precision matters more
+   than frequency) holds across the splits; its size does not.
+
+What survives: a fixed-level threshold suits species with very different
+natural variability badly, detection drift is indistinguishable from
+decline in counts alone, and none of this can be pinned down without an
+independent measure of survey precision.
 
 ### Design
 
@@ -35,12 +154,15 @@ about 25 seconds.
   chosen knowing the declines began after 1986, so the window means
   "behaviour before the crash". Process and survey noise are not separately
   identified, so the fitted total is split 25/75, 50/50 and 75/25 between
-  them and each split is simulated.
+  them and each split is simulated. (What the sweep actually held fixed
+  differs from this description; see reading note 6.)
 - **Alert:** in each survey year, alert if the filtered probability that
   the core-region index is more than 30% below baseline exceeds alpha
   (0.1, 0.25 or 0.5). Thirty per cent is the IUCN Criterion A Vulnerable
   magnitude, a provisional choice: no published numeric Kruger threshold
   for these species was found. Fifty per cent is run as a sensitivity.
+  (Only the magnitude is borrowed; the criterion itself is a reduction
+  over a time window, not a level. See reading note 5.)
 - **Survey designs:** every 1, 2 or 3 years, with observation sd 0.1, 0.2
   or 0.4 on the log scale (about 10-40% CV, inside the 3-71% range reported
   for helicopter counts by Reilly 2002, *Koedoe*).
@@ -79,16 +201,19 @@ Alpha 0.25 and the 50/50 noise split. A decline is missed if no alert
 comes within 5 years of the true index crossing the threshold; delay is
 counted from that crossing and excludes missed runs, which is why the
 figure plots the miss rate instead. All 19,440 result rows are in
-`results/v3/survey_design.csv`.
+`results/v3/survey_design.csv`. "False alarm" in this table means any
+alert in a run with no imposed decline (reading note 1).
 
-What the sweep shows:
+What the sweep shows (read with the notes above):
 
 1. **The alert's probability is calibrated only when nothing is
    happening.** With a stable population and the model correct, cases
    given a crossing probability of p were below the threshold about p of
    the time for all three species (largest bin gap 0.040-0.050, inside
    the pre-set 0.05 tolerance). During real declines or detection drift they were not
-   (largest gaps 0.07 roan, 0.24-0.45 tsessebe, 0.43-0.73 sable). The
+   (largest gaps 0.06-0.09 roan, 0.24-0.45 tsessebe, 0.43-0.73 sable;
+   the roan figure first read 0.07 and is corrected from
+   `calibration_verdict.csv`). The
    filter expects the population to drift back to its baseline, so it
    understates the chance that a decline has already crossed: for sable,
    cases given 0.1-0.2 were below the threshold 58% of the time.
@@ -144,15 +269,23 @@ this is descriptive, not a test.
 - **The controls stayed quiet** under both rules.
 
 `results/v3/replay_summary.csv` has the summary, `replay_years.csv` the
-year-by-year probabilities and `replay_alpha.csv` the alpha selection.
+year-by-year probabilities and `replay_alpha.csv` the alpha selection. Reading notes 2 and 4 qualify the
+roan lag and the "adds nothing" bullet.
 
 ### Limits
 
 - **Circularity.** The operating model is fitted to the same short series
   whose monitoring it evaluates; results mean "if the park behaves like
   this fit". The noise-split sweep and a near-random-walk operating model
-  (`operating_model = near_random_walk` in the CSV) bound this, but do not
-  remove it.
+  (`operating_model = near_random_walk` in the CSV) are sensitivities to
+  this, not bounds on it (reading note 7 gives their size).
+- **No decision was defined.** There is no stated cost of a false alarm
+  against a miss and no pass mark, so nothing here can fail as a
+  monitoring rule. The detector was also given the true parameters and
+  baseline; a manager would have to estimate them from the same counts,
+  and that uncertainty is not propagated.
+- **The replay is three known outcomes.** The species were chosen because
+  they crashed, so any rule fires on them eventually.
 - **The 1969-1979 sensitivity window is uninterpretable.** Only 1977-1979
   fall in the second survey era, so those fits are degenerate (roan's
   total variance 0.001). It is reported in the CSVs, not used.
@@ -168,10 +301,13 @@ year-by-year probabilities and `replay_alpha.csv` the alpha selection.
 
 ## How the evaluation was kept honest
 
-Each version's scoring was fixed before it was run, and SHA-256 hashes of
-the code and inputs were recorded before each run. Git history shows when
-files were committed, not when decisions were made; the hashes let a reader
-confirm that the committed files are the ones that produced the results.
+For versions 2 and 3 the scoring was fixed before it was run, and SHA-256
+hashes of the code were recorded before each run. Version 1's baselines
+were chosen before scoring but not formally pre-registered. Git history
+shows when files were committed, not when decisions were made; the hashes
+let a reader confirm that the committed files are the ones that produced
+the results. The hashes are a written record: no script computes or
+checks them, so verify with `git show <commit>:<path> | sha256sum`.
 
 | Version | Fixed before scoring | Committed in | Result |
 |---|---|---|---|
@@ -193,6 +329,27 @@ against the commits above shows docstring lines only. `scripts/replay.py`
 was first committed (in `96f1fd5`) after the rewording, so the hash recorded before its run
 (`010bdf68…`) applies to the file with its two original docstring lines
 restored.
+
+Gaps in this record, added after review (post hoc):
+
+- **The `scripts/replay.py` hash cannot be reproduced from git.** The
+  pre-rewording file was never committed; the committed file hashes to
+  `56ffe576…`. The claim that only two docstring lines differ rests on
+  this page, not on history.
+- **The sweep and the replay were each committed together with their
+  results**, so git does not show that the rules came first.
+- **Four secondary analyses planned for version 2 were not run** and were
+  not reported as dropped: a projection from a 1979 origin, survey sd
+  fixed at 0.1, 0.2 and 0.3, two-year rainfall, and a same-year hindcast.
+- **One docstring and one test name are wrong.** `with_noise_split` in
+  `src/monitoring.py` says the fitted total variance is kept, and
+  `test_noise_split_keeps_fitted_total_variance` says the same; the
+  function replaces the survey sd, so the total changes (reading note 6).
+  The test passes because it checks the two components separately. Both
+  are left as they are, because editing a frozen file changes its hash.
+- **Version 1's success measure changed.** It was first framed as matching
+  the direction of change and was scored on level skill; the change was
+  not labelled at the time.
 
 ## Version 2: pooled state-space model with rainfall (closed, negative)
 
